@@ -10,8 +10,10 @@ Scope set by the dashboard owner:
 - **SaaS Management** — no ZDP dataset; shown on the site as a "Not instrumented in ZDP yet" gap card.
 - **Change Management** — only an Approvals-funnel proxy exists; shown as a "Not instrumented in ZDP yet" gap card.
   Its proxy data stays in `data/features_master.json` + `sql/es_funnel_monthly.sql` but is not displayed.
-- **Action Flows, Tasks, MCP Actions, Action Flow Connectors** — measured in ZDP (funnel + ARR blocks) but
-  intentionally **out of scope**: excluded from every dashboard view. Data remains in the JSON blocks.
+- **Action Flows, Tasks, MCP Actions, Action Flow Connectors** — measured in ZDP (funnel + ARR blocks).
+  Tasks / MCP Actions / Connectors are intentionally **out of scope**: excluded from every dashboard view.
+  Action Flows was temporarily excluded on 2026-10-20 and restored the same day at the owner's request.
+  Data remains in the JSON blocks.
 
 To re-include any of these, remove its key from `GAP_FEATURES` / `HIDDEN_FEATURES` in `assets/app.js`.
 

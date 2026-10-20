@@ -24,7 +24,7 @@
 
   // Features measured in ZDP but intentionally out of scope for this dashboard
   // (user decision 2026-10-20): excluded from every view, no gap card.
-  const HIDDEN_FEATURES = ["action_flows", "tasks", "mcp_actions", "action_flow_connectors"];
+  const HIDDEN_FEATURES = ["tasks", "mcp_actions", "action_flow_connectors"];
   const isExcluded = (k) => GAP_FEATURES.some((g) => g.key === k) || HIDDEN_FEATURES.includes(k);
 
   const state = {
@@ -620,7 +620,7 @@
     const gapsEl = document.getElementById("gaps");
     gapsEl.hidden = false;
     gapsEl.innerHTML = `<strong>Scope &amp; known gaps</strong> — SaaS Management and Change Management are not instrumented in ZDP (Change Management has only an Approvals-funnel proxy; its data is kept in the repo's JSON but not shown) · ` +
-      `Action Flows, Tasks, MCP Actions and Action Flow Connectors are measured in ZDP but out of scope for this dashboard · ` +
+      `Tasks, MCP Actions and Action Flow Connectors are measured in ZDP but out of scope for this dashboard · ` +
       `ES AI Agents covers the AI Agents product across CX and EX.`;
     const src = document.getElementById("sources");
     src.innerHTML = "Sources: " + (MASTER.sources || []).map((s) => `${esc(FEATURES[s.feature] ? FEATURES[s.feature].name : s.feature)} <code>${esc(s.table)}</code> (fresh as of ${esc(s.freshness)})`).join(" · ") +
@@ -656,29 +656,6 @@
         syncFaces(); renderAll();
       }
     };
-    // feature checkboxes (gap features have no data cards, so no filter rows)
-    const list = document.getElementById("featureList");
-    list.innerHTML = "";
-    (SUMMARY.features_ranked || Object.keys(FEATURES)).filter((k) => !isExcluded(k)).forEach((f) => {
-      const r = latestRow(f) || {};
-      const row = document.createElement("div");
-      row.className = "check-row" + (state.active.has(f) ? " selected" : "");
-      row.innerHTML = `<span class="swatch" style="background:${color(f)}"></span><span>${esc(FEATURES[f].name)}</span><span class="check">✓</span><span class="count">${fmtInt(r.accounts_using)}</span>`;
-      row.addEventListener("click", () => {
-        if (state.active.has(f) && state.active.size === 1) return; // keep one
-        state.active.has(f) ? state.active.delete(f) : state.active.add(f);
-        renderAll();
-      });
-      list.appendChild(row);
-    });
-    const allRow = document.createElement("div");
-    allRow.className = "preset-row";
-    allRow.innerHTML = '<span style="font-weight:600">Reset — all products</span><span></span>';
-    allRow.addEventListener("click", () => {
-      state.active = new Set(Object.keys(FEATURES).filter((k) => !isExcluded(k)));
-      renderAll();
-    });
-    list.appendChild(allRow);
     syncFaces();
     document.addEventListener("click", (e) => {
       document.querySelectorAll("details.filter[open]").forEach((d) => {
@@ -687,17 +664,9 @@
     });
   }
   function syncFaces() {
-    const n = state.active.size;
-    const dataTotal = Object.keys(FEATURES).length - GAP_FEATURES.length - HIDDEN_FEATURES.length;
-    document.getElementById("featureFaceLabel").textContent = n === dataTotal ? "All products" : `${n} selected`;
     document.getElementById("rangeFaceLabel").textContent =
       ({ "3m": "Last 3 months", "6m": "Last 6 months", "12m": "Last 12 months", "all": "All data" }[state.preset]) ||
       (state.from && state.to ? `${fmtMonth(state.from <= state.to ? state.from : state.to)} – ${fmtMonth(state.from <= state.to ? state.to : state.from)}` : "Custom range");
-    // re-mark selections without rebuilding inputs
-    document.querySelectorAll("#featureList .check-row").forEach((row, i) => {
-      const f = (SUMMARY.features_ranked || Object.keys(FEATURES))[i];
-      if (f) row.classList.toggle("selected", state.active.has(f));
-    });
     document.querySelectorAll("#rangeList .preset-row").forEach((row, i) => {
       const key = [["3m"], ["6m"], ["12m"], ["all"]][i][0];
       row.classList.toggle("selected", state.preset === key);
