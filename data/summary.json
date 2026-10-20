@@ -1,0 +1,74 @@
+{
+  "generated_at": "2026-10-20T05:39:14Z",
+  "as_of": "2026-10-19",
+  "current_month": "2026-10",
+  "features": [
+    {
+      "feature": "itam",
+      "display_name": "ITAM (IT Asset Management)",
+      "accounts_using": 442,
+      "accounts_total": 37153,
+      "adoption_pct": 1.19,
+      "penetration_pct": 26.66,
+      "activation_pct": 4.46,
+      "active_users": null,
+      "mom_delta_adoption_pp": 0.02,
+      "data_as_of": "2026-10-19"
+    },
+    {
+      "feature": "service_catalog",
+      "display_name": "Service Catalog",
+      "accounts_using": 158,
+      "accounts_total": 37153,
+      "adoption_pct": 0.43,
+      "penetration_pct": 22.9,
+      "activation_pct": 1.86,
+      "active_users": null,
+      "mom_delta_adoption_pp": 0,
+      "data_as_of": "2026-10-19"
+    },
+    {
+      "feature": "es_ai_agents",
+      "display_name": "ES AI Agents",
+      "accounts_using": 1302,
+      "accounts_total": 80234,
+      "adoption_pct": 1.62,
+      "penetration_pct": 62.18,
+      "activation_pct": 2.61,
+      "active_users": null,
+      "mom_delta_adoption_pp": -0.03,
+      "data_as_of": "2026-10-19"
+    },
+    {
+      "feature": "change_management",
+      "display_name": "Change Management (Approvals funnel)",
+      "accounts_using": 526,
+      "accounts_total": 31088,
+      "adoption_pct": 1.69,
+      "penetration_pct": 38.06,
+      "activation_pct": 4.45,
+      "active_users": null,
+      "mom_delta_adoption_pp": -0.08,
+      "data_as_of": "2026-10-19"
+    },
+    {
+      "feature": "action_flows",
+      "display_name": "Advanced Action Flows",
+      "accounts_using": 2157,
+      "accounts_total": 87555,
+      "adoption_pct": 2.46,
+      "penetration_pct": 73.52,
+      "activation_pct": 3.35,
+      "active_users": null,
+      "mom_delta_adoption_pp": 0.09,
+      "data_as_of": "2026-10-19"
+    }
+  ],
+  "features_ranked": [
+    "action_flows",
+    "change_management",
+    "es_ai_agents",
+    "itam",
+    "service_catalog"
+  ]
+}

@@ -2,9 +2,9 @@ status
 Statement executed successfully.
 
 FEATURE,SEGMENT,ACCOUNTS_TOTAL,ACTIVATED_ACCOUNTS,ACCOUNTS_USING
-action_flows,1.Digital,47408,440,440
-action_flows,2.Corporate,29438,1752,1752
-action_flows,3.Enterprise,10542,742,742
+action_flows,1.Digital,47408,440,282
+action_flows,2.Corporate,29438,1752,1270
+action_flows,3.Enterprise,10542,742,605
 action_flows,,167,0,0
 change_management,1.Digital,7851,153,55
 change_management,2.Corporate,16281,869,338

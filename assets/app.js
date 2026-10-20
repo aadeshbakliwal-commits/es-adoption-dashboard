@@ -59,7 +59,11 @@
     const [y, mm] = m.split("-");
     return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][+mm - 1] + " " + y.slice(2);
   }
-  function fmtPct(v) { return (v == null || isNaN(v)) ? "—" : (+v).toFixed(1) + "%"; }
+  function fmtPct(v) {
+    if (v == null || isNaN(v)) return "—";
+    if (+v === 0) return "0%";
+    return Math.abs(+v) < 10 ? (+v).toFixed(2) + "%" : (+v).toFixed(1) + "%";
+  }
   function fmtInt(v) { return (v == null || isNaN(v)) ? "—" : (+v).toLocaleString("en-US"); }
 
   /* ---------- data shaping ---------- */
@@ -133,13 +137,13 @@
       const el = document.createElement("div");
       el.className = "kpi";
       const delta = d == null ? '<span style="opacity:.6">— vs prior month</span>'
-        : d >= 0 ? `<span class="up">▲</span> +${d.toFixed(1)} pp`
-          : `<span class="down">▼</span> ${d.toFixed(1)} pp`;
+        : d >= 0 ? `<span class="up">▲</span> +${d.toFixed(2)} pp`
+          : `<span class="down">▼</span> ${d.toFixed(2)} pp`;
       el.innerHTML = `
         <div class="k-label">${esc(FEATURES[f].name)}</div>
         <div class="k-value">${fmtPct(row ? row.adoption_pct : null)}</div>
         <div class="k-delta">${delta}</div>
-        <div class="k-sub">${fmtInt(row && row.accounts_using)} accounts · ${fmtInt(row && row.active_users)} active users</div>`;
+        <div class="k-sub">${fmtInt(row && row.accounts_using)} of ${fmtInt(row && row.accounts_total)} eligible accounts</div>`;
       wrap.appendChild(el);
     });
     if (!activeFeatures().length) wrap.innerHTML = '<div class="card"><p style="margin:8px;color:var(--muted)">No features selected — pick products in the filter above.</p></div>';
@@ -156,7 +160,7 @@
     document.getElementById("trendEmpty").hidden = !!(feats.length && months.length);
     let max = 0;
     feats.forEach((f) => series(f).forEach((r) => { max = Math.max(max, r.adoption_pct || 0); }));
-    const yMax = Math.max(20, Math.ceil((max + 4) / 10) * 10);
+    const yMax = Math.max(5, Math.ceil((max * 1.15) / 5) * 5);
     feats.forEach((f) => {
       const s = series(f);
       const tile = document.createElement("div");
@@ -200,7 +204,7 @@
           symbol: "circle", symbolSize: 5, showSymbol: false,
           emphasis: { scale: 1.6 },
           endLabel: s.length ? {
-            show: true, formatter: (+s[s.length - 1].adoption_pct).toFixed(1) + "%",
+            show: true, formatter: () => fmtPct(s[s.length - 1].adoption_pct),
             color: cssVar("--text"), fontSize: 10, fontWeight: 600, fontFamily: cssVar("--font"),
             precision: 1, offset: [2, 0]
           } : { show: false }
@@ -221,9 +225,20 @@
       { key: "activation_pct", label: "Activation" }
     ];
     const data = [];
+    // Columns are different metrics, so each column scales on its own range (still one hue, ordered).
+    const colMax = metrics.map((m) => Math.max(5, ...feats.map((f) => {
+      const r = latestRow(f);
+      return (r && r[m.key] != null) ? +r[m.key] : 0;
+    })));
     feats.forEach((f, y) => metrics.forEach((m, x) => {
-      const row = latestRow(f);
-      data.push([x, y, row && row[m.key] != null ? +row[m.key] : 0]);
+      const r = latestRow(f);
+      const v = r && r[m.key] != null ? +r[m.key] : 0;
+      const bg = rampColor(v / colMax[x] * 100);
+      data.push({
+        value: [x, y, v],
+        itemStyle: { color: bg, borderColor: cssVar("--surface"), borderWidth: 2, borderRadius: 3 },
+        label: { color: lum(bg) > 0.42 ? "#11110D" : "#F5F4EE" }
+      });
     }));
     const cellH = 40;
     el.style.height = feats.length * cellH + 52 + "px";
@@ -238,26 +253,15 @@
           return `<b>${fmtPct(p.value[2])}</b><br><span style="color:${cssVar("--muted")}">${esc(FEATURES[f].name)} · ${m}</span>`;
         }
       }),
-      visualMap: { show: false, min: 0, max: 100, inRange: { color: RAMP[isDark() ? "dark" : "light"] }, calculable: false },
       series: [{
         type: "heatmap", data,
-        itemStyle: { borderColor: cssVar("--surface"), borderWidth: 2, borderRadius: 3 },
         label: {
           show: true, fontFamily: cssVar("--font"), fontSize: 10.5, fontWeight: 600,
-          formatter: (p) => (+p.value[2]).toFixed(1) + "%",
-          color: "inherit",  // not supported; computed below
+          formatter: (p) => fmtPct(p.value[2])
         },
-        emphasis: { itemStyle: { borderColor: cssVar("--hairline-strong") } },
-        labelColor: true
+        emphasis: { itemStyle: { borderColor: cssVar("--hairline-strong") } }
       }]
     });
-    // Heatmap label color: set per-datum text color by background luminance.
-    const chart = state.charts[state.charts.length - 1];
-    const withLabels = data.map(([x, y, v]) => {
-      const bg = rampColor(v);
-      return { value: [x, y, v], label: { color: lum(bg) > 0.42 ? "#11110D" : "#F5F4EE" } };
-    });
-    chart.setOption({ series: [{ data: withLabels }] });
   }
 
   function renderDonut() {
@@ -314,18 +318,20 @@
       const r = latestRow(f) || {};
       return { name: FEATURES[f].name, value: [r.adoption_pct || 0, r.activation_pct || 0], accounts: r.accounts_using, f };
     });
+    const xMax = Math.max(1, Math.ceil(Math.max(...pts.map((p) => p.value[0])) * 1.25));
+    const yMax = Math.max(1, Math.ceil(Math.max(...pts.map((p) => p.value[1])) * 1.25));
     el.style.height = "300px";
     makeChart(el, {
       animation: false,
       grid: Object.assign({}, baseGrid, { top: 18, bottom: 26 }),
       xAxis: {
-        type: "value", min: 0, max: 100, name: "Adoption %", nameLocation: "middle", nameGap: 24,
+        type: "value", min: 0, max: xMax, name: "Adoption %", nameLocation: "middle", nameGap: 24,
         nameTextStyle: Object.assign(axisLabel(), { fontSize: 10 }),
         axisLabel: Object.assign(axisLabel(), { formatter: "{value}%" }), splitLine: splitLine(),
         axisLine: { lineStyle: { color: cssVar("--axis") } }
       },
       yAxis: {
-        type: "value", min: 0, max: 100, name: "Activation %", nameLocation: "end",
+        type: "value", min: 0, max: yMax, name: "Activation %", nameLocation: "end",
         nameTextStyle: Object.assign(axisLabel(), { fontSize: 10, align: "left" }),
         axisLabel: Object.assign(axisLabel(), { formatter: "{value}%" }), splitLine: splitLine()
       },
@@ -342,13 +348,7 @@
           color: cssVar("--text"), fontSize: 10.5, fontFamily: cssVar("--font"), fontWeight: 600
         },
         labelLayout: { hideOverlap: true },
-        emphasis: { scale: 1.25 },
-        markLine: {
-          silent: true, symbol: "none",
-          lineStyle: { color: cssVar("--grid"), type: "solid", width: 1 },
-          label: { show: false },
-          data: [{ xAxis: 50 }, { yAxis: 50 }]
-        }
+        emphasis: { scale: 1.25 }
       }]
     });
   }
@@ -394,7 +394,8 @@
     if (!usable.length) { panel.hidden = true; return; }
     panel.hidden = false;
     const products = [];
-    usable.forEach((f) => bd.filter((r) => r.feature === f).forEach((r) => { if (!products.includes(r.product)) products.push(r.product); }));
+    usable.forEach((f) => bd.filter((r) => r.feature === f && r.product).forEach((r) => { if (!products.includes(r.product)) products.push(r.product); }));
+    if (!products.length) { panel.hidden = true; return; }
     const el = document.getElementById("chartSeg");
     const rows = usable.map((f) => {
       const row = { feature: f };
@@ -434,7 +435,7 @@
       const r = latestRow(f) || {};
       const d = deltaPP(f);
       const tr = document.createElement("tr");
-      const delta = d == null ? "—" : d >= 0 ? `<span class="delta up">▲ +${d.toFixed(1)}</span>` : `<span class="delta down">▼ ${d.toFixed(1)}</span>`;
+      const delta = d == null ? "—" : d >= 0 ? `<span class="delta up">▲ +${d.toFixed(2)}</span>` : `<span class="delta down">▼ ${d.toFixed(2)}</span>`;
       tr.innerHTML = `
         <td>${esc(FEATURES[f].name)}</td>
         <td>${fmtPct(r.adoption_pct)}</td>
@@ -443,7 +444,6 @@
         <td>${fmtPct(r.activation_pct)}</td>
         <td>${fmtInt(r.accounts_using)}</td>
         <td>${fmtInt(r.accounts_total)}</td>
-        <td>${fmtInt(r.active_users)}</td>
         <td>${fmtInt(r.activated_accounts)}</td>
         <td>${esc(r.month ? fmtMonth(r.month) : "—")}</td>`;
       tbody.appendChild(tr);
@@ -460,6 +460,16 @@
     const src = document.getElementById("sources");
     src.innerHTML = "Sources: " + (MASTER.sources || []).map((s) => `${esc(FEATURES[s.feature] ? FEATURES[s.feature].name : s.feature)} <code>${esc(s.table)}</code> (fresh as of ${esc(s.freshness)})`).join(" · ") +
       " · Refresh: <code>bin/refresh.sh</code> in the repo.";
+    const ranked = new Set(SUMMARY.features_ranked || []);
+    const gaps = Object.keys(FEATURES).filter((k) => !ranked.has(k));
+    const gapsEl = document.getElementById("gaps");
+    if (gaps.length) {
+      gapsEl.hidden = false;
+      gapsEl.innerHTML = `<strong>Known gaps</strong> — ${gaps.map((g) => esc(FEATURES[g].name)).join(", ")}: no usable ZDP dataset, so it is not shown (do not treat absence as zero) · ` +
+        `Change Management is proxied by the Approvals funnel · ES AI Agents covers the AI Agents product across CX and EX.`;
+    } else {
+      gapsEl.hidden = true;
+    }
   }
 
   /* ---------- filters ---------- */

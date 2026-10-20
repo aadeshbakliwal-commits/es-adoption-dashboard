@@ -1,46 +1,1013 @@
-// PLACEHOLDER DATA — replaced by bin/refresh.sh after the first ZDP pull.
-(function () {
-  const keys = ["itam", "service_catalog", "es_ai_agents", "saas_management", "change_management", "action_flows"];
-  const months = [];
-  for (let y = 2025, m = 10; !(y === 2026 && m === 11); m === 12 ? ((y += 1), (m = 1)) : (m += 1)) months.push(`${y}-${String(m).padStart(2, "0")}`);
-  const base = {
-    itam: [13.1, 13.6, 14.0, 14.7, 15.2, 15.6, 16.1, 16.5, 16.8, 17.0, 17.1, 17.3, 17.4],
-    service_catalog: [21.2, 21.9, 22.6, 23.4, 24.1, 24.8, 25.3, 25.9, 26.4, 26.8, 27.0, 27.2, 27.4],
-    es_ai_agents: [14.8, 15.7, 16.6, 17.5, 18.5, 19.4, 20.3, 21.2, 22.1, 23.0, 23.7, 24.4, 25.1],
-    saas_management: [10.2, 10.5, 10.8, 11.0, 11.2, 11.4, 11.6, 11.8, 12.0, 12.1, 12.2, 12.3, 12.4],
-    change_management: [7.4, 7.7, 7.9, 8.2, 8.5, 8.7, 8.9, 9.1, 9.3, 9.5, 9.6, 9.8, 9.9],
-    action_flows: [15.4, 15.9, 16.4, 16.9, 17.4, 17.8, 18.2, 18.5, 18.8, 19.1, 19.3, 19.5, 19.6]
-  };
-  const totals = { itam: 52, service_catalog: 61, es_ai_agents: 39, saas_management: 28, change_management: 31, action_flows: 43 };
-  const monthly = [];
-  months.forEach((mo, i) => {
-    keys.forEach((k) => {
-      const pct = base[k][i];
-      monthly.push({
-        feature: k, month: mo,
-        accounts_using: Math.round(11400 * pct / 100),
-        accounts_total: 11400,
-        adoption_pct: pct,
-        active_users: Math.round(11400 * pct / 100 * totals[k] / 100 * 5),
-        licensed_users: Math.round(11400 * totals[k] / 100 * 5),
-        penetration_pct: totals[k],
-        activated_accounts: Math.round(11400 * pct / 100 * 1.24),
-        activation_pct: Math.round(pct * 1.24 * 10) / 10
-      });
-    });
-  });
-  window.ES_MASTER = {
-    placeholder: true,
-    generated_at: "2026-10-20T00:00:00Z",
-    as_of: "2026-10-19",
-    definitions: {
-      adoption: "PLACEHOLDER — share of accounts in the universe with any usage of the feature in the month.",
-      penetration: "PLACEHOLDER — active users of the feature as a share of licensed/entitled users.",
-      activation: "PLACEHOLDER — accounts with the feature enabled or first meaningful use, as a share of eligible accounts.",
-      account_universe: "PLACEHOLDER — all accounts in the ZDP accounts-universe table."
+window.ES_MASTER = {
+  "generated_at": "2026-10-20T05:39:14Z",
+  "as_of": "2026-10-19",
+  "definitions": {
+    "adoption": "Distinct paid accounts with meaningful feature usage in the period (ZDP ACTIVATED flag = usage within last 28 days at the month-end snapshot; Action Flows: >=1 completed flow-step execution in the month) divided by paid accounts eligible for the feature.",
+    "penetration": "Depth of usage: accounts actively using the feature in the period divided by accounts that have the feature enabled / first-used it (ZDP PENETRATED flag; Action Flows: any completed execution ever up to month end). User-level \"active users / licensed users\" is not available in ZDP instance-level snapshots, so this documented fallback is used.",
+    "activation": "Accounts with the feature enabled or first-meaningful-use in the last 6 months (ZDP PENETRATED flag; Action Flows: >=1 completed flow-step execution ever up to month end) divided by paid accounts eligible for the feature.",
+    "account_universe": "Paid customer instances (INSTANCE_IS_PAID_CUSTOMER = TRUE in FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT, matching PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT; ~87.5k instances) further restricted per feature to the feature entitlement flag (ELIGIBLE). This is \"accounts entitled to the feature\", not \"all Zendesk accounts\". Note: ITAM / Service Catalog / Approvals eligibility includes CX Suite plans, not only ES Suite plans. Action Flows has no eligibility flag, so its denominator is all paid customers."
+  },
+  "sources": [
+    {
+      "feature": "itam",
+      "table": "FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT",
+      "grain": "instance account x daily snapshot; month-end snapshot used per month",
+      "freshness": "2026-10-18"
     },
-    sources: keys.map((k) => ({ feature: k, table: "PLACEHOLDER.DB.SCHEMA.TABLE", grain: "account × month", freshness: "2026-10-19" })),
-    monthly,
-    product_breakdown: []
-  };
-})();
+    {
+      "feature": "service_catalog",
+      "table": "FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT",
+      "grain": "instance account x daily snapshot; month-end snapshot used per month",
+      "freshness": "2026-10-18"
+    },
+    {
+      "feature": "change_management",
+      "table": "FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT",
+      "grain": "instance account x daily snapshot (Approvals funnel, proxy for Change Management); month-end snapshot used per month",
+      "freshness": "2026-10-18"
+    },
+    {
+      "feature": "es_ai_agents",
+      "table": "FUNCTIONAL.PRODUCT_ANALYTICS.AI_AGENTS_INSTANCE_DAILY_SNAPSHOT",
+      "grain": "instance account x daily snapshot; month-end snapshot used per month",
+      "freshness": "2026-10-18"
+    },
+    {
+      "feature": "action_flows",
+      "table": "PROPAGATED_FUNCTIONAL.PRODUCT_ANALYTICS.FACT_AGGREGATED_ACTION_FLOW_EXECUTIONS_DAILY_SNAPSHOT",
+      "grain": "instance account x day (execution counts); aggregated to month + cumulative-ever; restricted to paid universe at month end",
+      "freshness": "2026-10-19"
+    },
+    {
+      "feature": "account_universe",
+      "table": "PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT",
+      "grain": "instance account x daily snapshot (paid customers); used for segment breakdown only",
+      "freshness": "2026-10-18"
+    }
+  ],
+  "monthly": [
+    {
+      "feature": "itam",
+      "month": "2025-09",
+      "accounts_using": 0,
+      "accounts_total": 38350,
+      "adoption_pct": 0,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": null,
+      "activated_accounts": 0,
+      "activation_pct": 0
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2025-09",
+      "accounts_using": 8,
+      "accounts_total": 38350,
+      "adoption_pct": 0.02,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 9.41,
+      "activated_accounts": 85,
+      "activation_pct": 0.22
+    },
+    {
+      "feature": "change_management",
+      "month": "2025-09",
+      "accounts_using": 170,
+      "accounts_total": 31123,
+      "adoption_pct": 0.55,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 47.35,
+      "activated_accounts": 359,
+      "activation_pct": 1.15
+    },
+    {
+      "feature": "itam",
+      "month": "2025-10",
+      "accounts_using": 0,
+      "accounts_total": 38433,
+      "adoption_pct": 0,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": null,
+      "activated_accounts": 0,
+      "activation_pct": 0
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2025-10",
+      "accounts_using": 32,
+      "accounts_total": 38433,
+      "adoption_pct": 0.08,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 20,
+      "activated_accounts": 160,
+      "activation_pct": 0.42
+    },
+    {
+      "feature": "change_management",
+      "month": "2025-10",
+      "accounts_using": 174,
+      "accounts_total": 31280,
+      "adoption_pct": 0.56,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 38.24,
+      "activated_accounts": 455,
+      "activation_pct": 1.45
+    },
+    {
+      "feature": "itam",
+      "month": "2025-11",
+      "accounts_using": 36,
+      "accounts_total": 38518,
+      "adoption_pct": 0.09,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 7.06,
+      "activated_accounts": 510,
+      "activation_pct": 1.32
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2025-11",
+      "accounts_using": 30,
+      "accounts_total": 38518,
+      "adoption_pct": 0.08,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 13.04,
+      "activated_accounts": 230,
+      "activation_pct": 0.6
+    },
+    {
+      "feature": "change_management",
+      "month": "2025-11",
+      "accounts_using": 186,
+      "accounts_total": 31421,
+      "adoption_pct": 0.59,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 36.26,
+      "activated_accounts": 513,
+      "activation_pct": 1.63
+    },
+    {
+      "feature": "itam",
+      "month": "2025-12",
+      "accounts_using": 56,
+      "accounts_total": 38743,
+      "adoption_pct": 0.14,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 7.47,
+      "activated_accounts": 750,
+      "activation_pct": 1.94
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2025-12",
+      "accounts_using": 32,
+      "accounts_total": 38743,
+      "adoption_pct": 0.08,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 11.23,
+      "activated_accounts": 285,
+      "activation_pct": 0.74
+    },
+    {
+      "feature": "change_management",
+      "month": "2025-12",
+      "accounts_using": 168,
+      "accounts_total": 31748,
+      "adoption_pct": 0.53,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 29.53,
+      "activated_accounts": 569,
+      "activation_pct": 1.79
+    },
+    {
+      "feature": "itam",
+      "month": "2026-01",
+      "accounts_using": 97,
+      "accounts_total": 38798,
+      "adoption_pct": 0.25,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 10.64,
+      "activated_accounts": 912,
+      "activation_pct": 2.35
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-01",
+      "accounts_using": 50,
+      "accounts_total": 38798,
+      "adoption_pct": 0.13,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 13.97,
+      "activated_accounts": 358,
+      "activation_pct": 0.92
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-01",
+      "accounts_using": 219,
+      "accounts_total": 31858,
+      "adoption_pct": 0.69,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 33.74,
+      "activated_accounts": 649,
+      "activation_pct": 2.04
+    },
+    {
+      "feature": "itam",
+      "month": "2026-02",
+      "accounts_using": 132,
+      "accounts_total": 38826,
+      "adoption_pct": 0.34,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 12.8,
+      "activated_accounts": 1031,
+      "activation_pct": 2.66
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-02",
+      "accounts_using": 62,
+      "accounts_total": 38826,
+      "adoption_pct": 0.16,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 14.29,
+      "activated_accounts": 434,
+      "activation_pct": 1.12
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-02",
+      "accounts_using": 249,
+      "accounts_total": 31967,
+      "adoption_pct": 0.78,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 37.05,
+      "activated_accounts": 672,
+      "activation_pct": 2.1
+    },
+    {
+      "feature": "itam",
+      "month": "2026-03",
+      "accounts_using": 169,
+      "accounts_total": 38771,
+      "adoption_pct": 0.44,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 14.26,
+      "activated_accounts": 1185,
+      "activation_pct": 3.06
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-03",
+      "accounts_using": 62,
+      "accounts_total": 38771,
+      "adoption_pct": 0.16,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 12.58,
+      "activated_accounts": 493,
+      "activation_pct": 1.27
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-03",
+      "accounts_using": 265,
+      "accounts_total": 32039,
+      "adoption_pct": 0.83,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 38.8,
+      "activated_accounts": 683,
+      "activation_pct": 2.13
+    },
+    {
+      "feature": "itam",
+      "month": "2026-04",
+      "accounts_using": 220,
+      "accounts_total": 38790,
+      "adoption_pct": 0.57,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 16.95,
+      "activated_accounts": 1298,
+      "activation_pct": 3.35
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-04",
+      "accounts_using": 75,
+      "accounts_total": 38790,
+      "adoption_pct": 0.19,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 13.51,
+      "activated_accounts": 555,
+      "activation_pct": 1.43
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-04",
+      "accounts_using": 315,
+      "accounts_total": 32165,
+      "adoption_pct": 0.98,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 43.63,
+      "activated_accounts": 722,
+      "activation_pct": 2.24
+    },
+    {
+      "feature": "itam",
+      "month": "2026-05",
+      "accounts_using": 269,
+      "accounts_total": 38717,
+      "adoption_pct": 0.69,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 19,
+      "activated_accounts": 1416,
+      "activation_pct": 3.66
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-05",
+      "accounts_using": 77,
+      "accounts_total": 38717,
+      "adoption_pct": 0.2,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 12.5,
+      "activated_accounts": 616,
+      "activation_pct": 1.59
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-05",
+      "accounts_using": 402,
+      "accounts_total": 32225,
+      "adoption_pct": 1.25,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 47.74,
+      "activated_accounts": 842,
+      "activation_pct": 2.61
+    },
+    {
+      "feature": "itam",
+      "month": "2026-06",
+      "accounts_using": 317,
+      "accounts_total": 38443,
+      "adoption_pct": 0.82,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 21.36,
+      "activated_accounts": 1484,
+      "activation_pct": 3.86
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-06",
+      "accounts_using": 85,
+      "accounts_total": 38443,
+      "adoption_pct": 0.22,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 13.04,
+      "activated_accounts": 652,
+      "activation_pct": 1.7
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-06",
+      "accounts_using": 479,
+      "accounts_total": 32063,
+      "adoption_pct": 1.49,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 47.52,
+      "activated_accounts": 1008,
+      "activation_pct": 3.14
+    },
+    {
+      "feature": "itam",
+      "month": "2026-07",
+      "accounts_using": 360,
+      "accounts_total": 38532,
+      "adoption_pct": 0.93,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 23.12,
+      "activated_accounts": 1557,
+      "activation_pct": 4.04
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-07",
+      "accounts_using": 108,
+      "accounts_total": 38532,
+      "adoption_pct": 0.28,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 15.58,
+      "activated_accounts": 693,
+      "activation_pct": 1.8
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-07",
+      "accounts_using": 472,
+      "accounts_total": 32245,
+      "adoption_pct": 1.46,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 41.99,
+      "activated_accounts": 1124,
+      "activation_pct": 3.49
+    },
+    {
+      "feature": "itam",
+      "month": "2026-08",
+      "accounts_using": 397,
+      "accounts_total": 37380,
+      "adoption_pct": 1.06,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 24.22,
+      "activated_accounts": 1639,
+      "activation_pct": 4.38
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-08",
+      "accounts_using": 149,
+      "accounts_total": 37380,
+      "adoption_pct": 0.4,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 21.02,
+      "activated_accounts": 709,
+      "activation_pct": 1.9
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-08",
+      "accounts_using": 501,
+      "accounts_total": 31174,
+      "adoption_pct": 1.61,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 40.93,
+      "activated_accounts": 1224,
+      "activation_pct": 3.93
+    },
+    {
+      "feature": "itam",
+      "month": "2026-09",
+      "accounts_using": 435,
+      "accounts_total": 37236,
+      "adoption_pct": 1.17,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 25.22,
+      "activated_accounts": 1725,
+      "activation_pct": 4.63
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-09",
+      "accounts_using": 161,
+      "accounts_total": 37236,
+      "adoption_pct": 0.43,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 21.58,
+      "activated_accounts": 746,
+      "activation_pct": 2
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-09",
+      "accounts_using": 550,
+      "accounts_total": 31127,
+      "adoption_pct": 1.77,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 41.26,
+      "activated_accounts": 1333,
+      "activation_pct": 4.28
+    },
+    {
+      "feature": "itam",
+      "month": "2026-10",
+      "accounts_using": 442,
+      "accounts_total": 37153,
+      "adoption_pct": 1.19,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 26.66,
+      "activated_accounts": 1658,
+      "activation_pct": 4.46
+    },
+    {
+      "feature": "service_catalog",
+      "month": "2026-10",
+      "accounts_using": 158,
+      "accounts_total": 37153,
+      "adoption_pct": 0.43,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 22.9,
+      "activated_accounts": 690,
+      "activation_pct": 1.86
+    },
+    {
+      "feature": "change_management",
+      "month": "2026-10",
+      "accounts_using": 526,
+      "accounts_total": 31088,
+      "adoption_pct": 1.69,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 38.06,
+      "activated_accounts": 1382,
+      "activation_pct": 4.45
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2025-09",
+      "accounts_using": 400,
+      "accounts_total": 88752,
+      "adoption_pct": 0.45,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 56.82,
+      "activated_accounts": 704,
+      "activation_pct": 0.79
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2025-10",
+      "accounts_using": 459,
+      "accounts_total": 88347,
+      "adoption_pct": 0.52,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 59.61,
+      "activated_accounts": 770,
+      "activation_pct": 0.87
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2025-11",
+      "accounts_using": 505,
+      "accounts_total": 88057,
+      "adoption_pct": 0.57,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 58.25,
+      "activated_accounts": 867,
+      "activation_pct": 0.98
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2025-12",
+      "accounts_using": 549,
+      "accounts_total": 87556,
+      "adoption_pct": 0.63,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 54.9,
+      "activated_accounts": 1000,
+      "activation_pct": 1.14
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-01",
+      "accounts_using": 603,
+      "accounts_total": 87216,
+      "adoption_pct": 0.69,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 57.05,
+      "activated_accounts": 1057,
+      "activation_pct": 1.21
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-02",
+      "accounts_using": 668,
+      "accounts_total": 86804,
+      "adoption_pct": 0.77,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 58.91,
+      "activated_accounts": 1134,
+      "activation_pct": 1.31
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-03",
+      "accounts_using": 736,
+      "accounts_total": 86122,
+      "adoption_pct": 0.85,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 60.38,
+      "activated_accounts": 1219,
+      "activation_pct": 1.42
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-04",
+      "accounts_using": 799,
+      "accounts_total": 85491,
+      "adoption_pct": 0.93,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 61.13,
+      "activated_accounts": 1307,
+      "activation_pct": 1.53
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-05",
+      "accounts_using": 893,
+      "accounts_total": 84840,
+      "adoption_pct": 1.05,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 61.97,
+      "activated_accounts": 1441,
+      "activation_pct": 1.7
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-06",
+      "accounts_using": 991,
+      "accounts_total": 83920,
+      "adoption_pct": 1.18,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 62.17,
+      "activated_accounts": 1594,
+      "activation_pct": 1.9
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-07",
+      "accounts_using": 1121,
+      "accounts_total": 83316,
+      "adoption_pct": 1.35,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 63.08,
+      "activated_accounts": 1777,
+      "activation_pct": 2.13
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-08",
+      "accounts_using": 1226,
+      "accounts_total": 81550,
+      "adoption_pct": 1.5,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 62.97,
+      "activated_accounts": 1947,
+      "activation_pct": 2.39
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-09",
+      "accounts_using": 1328,
+      "accounts_total": 80717,
+      "adoption_pct": 1.65,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 64,
+      "activated_accounts": 2075,
+      "activation_pct": 2.57
+    },
+    {
+      "feature": "es_ai_agents",
+      "month": "2026-10",
+      "accounts_using": 1302,
+      "accounts_total": 80234,
+      "adoption_pct": 1.62,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 62.18,
+      "activated_accounts": 2094,
+      "activation_pct": 2.61
+    },
+    {
+      "feature": "action_flows",
+      "month": "2025-09",
+      "accounts_using": 27,
+      "accounts_total": 98335,
+      "adoption_pct": 0.03,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 100,
+      "activated_accounts": 27,
+      "activation_pct": 0.03
+    },
+    {
+      "feature": "action_flows",
+      "month": "2025-10",
+      "accounts_using": 41,
+      "accounts_total": 97710,
+      "adoption_pct": 0.04,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 83.67,
+      "activated_accounts": 49,
+      "activation_pct": 0.05
+    },
+    {
+      "feature": "action_flows",
+      "month": "2025-11",
+      "accounts_using": 39,
+      "accounts_total": 97385,
+      "adoption_pct": 0.04,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 63.93,
+      "activated_accounts": 61,
+      "activation_pct": 0.06
+    },
+    {
+      "feature": "action_flows",
+      "month": "2025-12",
+      "accounts_using": 40,
+      "accounts_total": 96686,
+      "adoption_pct": 0.04,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 59.7,
+      "activated_accounts": 67,
+      "activation_pct": 0.07
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-01",
+      "accounts_using": 35,
+      "accounts_total": 96158,
+      "adoption_pct": 0.04,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 48.61,
+      "activated_accounts": 72,
+      "activation_pct": 0.07
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-02",
+      "accounts_using": 58,
+      "accounts_total": 95555,
+      "adoption_pct": 0.06,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 63.74,
+      "activated_accounts": 91,
+      "activation_pct": 0.1
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-03",
+      "accounts_using": 71,
+      "accounts_total": 94670,
+      "adoption_pct": 0.07,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 65.74,
+      "activated_accounts": 108,
+      "activation_pct": 0.11
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-04",
+      "accounts_using": 65,
+      "accounts_total": 93844,
+      "adoption_pct": 0.07,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 56.03,
+      "activated_accounts": 116,
+      "activation_pct": 0.12
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-05",
+      "accounts_using": 914,
+      "accounts_total": 93024,
+      "adoption_pct": 0.98,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 95.61,
+      "activated_accounts": 956,
+      "activation_pct": 1.03
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-06",
+      "accounts_using": 1211,
+      "accounts_total": 91926,
+      "adoption_pct": 1.32,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 91.19,
+      "activated_accounts": 1328,
+      "activation_pct": 1.44
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-07",
+      "accounts_using": 1386,
+      "accounts_total": 91117,
+      "adoption_pct": 1.52,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 81.87,
+      "activated_accounts": 1693,
+      "activation_pct": 1.86
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-08",
+      "accounts_using": 1671,
+      "accounts_total": 89156,
+      "adoption_pct": 1.87,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 79.57,
+      "activated_accounts": 2100,
+      "activation_pct": 2.36
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-09",
+      "accounts_using": 2089,
+      "accounts_total": 88162,
+      "adoption_pct": 2.37,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 79.37,
+      "activated_accounts": 2632,
+      "activation_pct": 2.99
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-10",
+      "accounts_using": 2157,
+      "accounts_total": 87555,
+      "adoption_pct": 2.46,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 73.52,
+      "activated_accounts": 2934,
+      "activation_pct": 3.35
+    }
+  ],
+  "product_breakdown": [
+    {
+      "feature": "action_flows",
+      "product": "Enterprise",
+      "accounts_using": 605,
+      "adoption_pct": 5.74
+    },
+    {
+      "feature": "action_flows",
+      "product": "Corporate",
+      "accounts_using": 1270,
+      "adoption_pct": 4.31
+    },
+    {
+      "feature": "action_flows",
+      "product": "Digital",
+      "accounts_using": 282,
+      "adoption_pct": 0.59
+    },
+    {
+      "feature": "action_flows",
+      "product": "Unknown",
+      "accounts_using": 0,
+      "adoption_pct": 0
+    },
+    {
+      "feature": "change_management",
+      "product": "Corporate",
+      "accounts_using": 338,
+      "adoption_pct": 2.08
+    },
+    {
+      "feature": "change_management",
+      "product": "Enterprise",
+      "accounts_using": 133,
+      "adoption_pct": 1.92
+    },
+    {
+      "feature": "change_management",
+      "product": "Digital",
+      "accounts_using": 55,
+      "adoption_pct": 0.7
+    },
+    {
+      "feature": "change_management",
+      "product": "Unknown",
+      "accounts_using": 0,
+      "adoption_pct": 0
+    },
+    {
+      "feature": "es_ai_agents",
+      "product": "Enterprise",
+      "accounts_using": 330,
+      "adoption_pct": 3.23
+    },
+    {
+      "feature": "es_ai_agents",
+      "product": "Corporate",
+      "accounts_using": 854,
+      "adoption_pct": 3.02
+    },
+    {
+      "feature": "es_ai_agents",
+      "product": "Digital",
+      "accounts_using": 118,
+      "adoption_pct": 0.28
+    },
+    {
+      "feature": "es_ai_agents",
+      "product": "Unknown",
+      "accounts_using": 0,
+      "adoption_pct": 0
+    },
+    {
+      "feature": "itam",
+      "product": "Corporate",
+      "accounts_using": 282,
+      "adoption_pct": 1.53
+    },
+    {
+      "feature": "itam",
+      "product": "Enterprise",
+      "accounts_using": 96,
+      "adoption_pct": 1.31
+    },
+    {
+      "feature": "itam",
+      "product": "Digital",
+      "accounts_using": 64,
+      "adoption_pct": 0.57
+    },
+    {
+      "feature": "itam",
+      "product": "Unknown",
+      "accounts_using": 0,
+      "adoption_pct": 0
+    },
+    {
+      "feature": "service_catalog",
+      "product": "Enterprise",
+      "accounts_using": 44,
+      "adoption_pct": 0.6
+    },
+    {
+      "feature": "service_catalog",
+      "product": "Corporate",
+      "accounts_using": 93,
+      "adoption_pct": 0.5
+    },
+    {
+      "feature": "service_catalog",
+      "product": "Digital",
+      "accounts_using": 21,
+      "adoption_pct": 0.19
+    },
+    {
+      "feature": "service_catalog",
+      "product": "Unknown",
+      "accounts_using": 0,
+      "adoption_pct": 0
+    }
+  ]
+}
+

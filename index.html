@@ -56,14 +56,14 @@
     <div class="panel-grid">
       <div class="card span-2">
         <h2>Adoption over time</h2>
-        <p class="card-sub">Accounts using each feature, as a share of the account universe · common scale</p>
+        <p class="card-sub">Accounts using each feature, as a share of eligible paid accounts · common scale</p>
         <div class="mini-grid" id="trendGrid"></div>
         <p id="trendEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No data in this range.</p>
       </div>
 
       <div class="card">
         <h2>Where each feature stands</h2>
-        <p class="card-sub">Latest value per metric · more saturated is higher</p>
+        <p class="card-sub">Latest value per metric · column-scaled, more saturated is higher</p>
         <div class="chart" id="chartHeat"></div>
         <p id="heatEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
       </div>
@@ -77,14 +77,14 @@
 
       <div class="card">
         <h2>Adoption × Activation</h2>
-        <p class="card-sub">Guides mark the 50% line · one point per feature</p>
+        <p class="card-sub">One point per feature · axes span the observed range</p>
         <div class="chart" id="chartScatter"></div>
         <p id="scatterEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
       </div>
 
       <div class="card">
         <h2>Penetration by feature</h2>
-        <p class="card-sub">Active users as a share of licensed users · latest month</p>
+        <p class="card-sub">Accounts using as a share of accounts enabled · latest month</p>
         <div class="chart" id="chartPen"></div>
         <p id="penEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
       </div>
@@ -102,7 +102,7 @@
           <thead>
             <tr>
               <th>Feature</th><th>Adoption</th><th>Δ MoM</th><th>Penetration</th><th>Activation</th>
-              <th>Accounts using</th><th>Accounts total</th><th>Active users</th><th>Activated accts</th><th>As of</th>
+              <th>Accounts using</th><th>Accounts eligible</th><th>Activated accts</th><th>As of</th>
             </tr>
           </thead>
           <tbody id="tblBody"></tbody>
@@ -113,6 +113,7 @@
 
   <footer>
     <p class="defs" id="defs"></p>
+    <p class="defs" id="gaps" hidden></p>
     <p class="src" id="sources"></p>
   </footer>
 

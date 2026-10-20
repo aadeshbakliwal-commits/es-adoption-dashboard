@@ -47,13 +47,27 @@ ai AS (
         WHERE SOURCE_SNAPSHOT_DATE <= $end_date
     )
 ),
-flows AS (
+flows_ever AS (
+    -- instances with any completed flow-step execution ever (up to end_date)
     SELECT
         f.INSTANCE_ACCOUNT_ID,
         SUM(f.COUNT_COMPLETED_ACTION_FLOW_STEP_EXECUTIONS) AS total_execs
     FROM PROPAGATED_FUNCTIONAL.PRODUCT_ANALYTICS.FACT_AGGREGATED_ACTION_FLOW_EXECUTIONS_DAILY_SNAPSHOT f
     WHERE f.SOURCE_SNAPSHOT_DATE <= $end_date
     GROUP BY 1
+),
+flows_latest_month AS (
+    -- instances with >= 1 completed flow-step execution in the latest partial month (MTD)
+    SELECT
+        f.INSTANCE_ACCOUNT_ID,
+        SUM(f.COUNT_COMPLETED_ACTION_FLOW_STEP_EXECUTIONS) AS month_execs
+    FROM PROPAGATED_FUNCTIONAL.PRODUCT_ANALYTICS.FACT_AGGREGATED_ACTION_FLOW_EXECUTIONS_DAILY_SNAPSHOT f
+    WHERE f.SOURCE_SNAPSHOT_DATE >= DATE_TRUNC('month', (SELECT MAX(SOURCE_SNAPSHOT_DATE)
+        FROM PROPAGATED_FUNCTIONAL.PRODUCT_ANALYTICS.FACT_AGGREGATED_ACTION_FLOW_EXECUTIONS_DAILY_SNAPSHOT
+        WHERE SOURCE_SNAPSHOT_DATE <= $end_date))
+      AND f.SOURCE_SNAPSHOT_DATE <= $end_date
+    GROUP BY 1
+    HAVING SUM(f.COUNT_COMPLETED_ACTION_FLOW_STEP_EXECUTIONS) > 0
 ),
 es_segmented AS (
     SELECT
@@ -100,10 +114,11 @@ es_segmented AS (
         'action_flows',
         p.CRM_MARKET_SUPER_SEGMENT,
         COUNT(DISTINCT p.INSTANCE_ACCOUNT_ID),
-        COUNT(DISTINCT fl.INSTANCE_ACCOUNT_ID),              -- activated = any execution ever
-        COUNT(DISTINCT CASE WHEN fl.total_execs > 0 THEN fl.INSTANCE_ACCOUNT_ID END)  -- using = ... (same as activated for the latest period)
+        COUNT(DISTINCT fe.INSTANCE_ACCOUNT_ID),              -- activated = any execution ever (paid instances)
+        COUNT(DISTINCT flm.INSTANCE_ACCOUNT_ID)              -- using = >=1 execution in the latest month (MTD)
     FROM pcu p
-    LEFT JOIN flows fl ON fl.INSTANCE_ACCOUNT_ID = p.INSTANCE_ACCOUNT_ID
+    LEFT JOIN flows_ever fe ON fe.INSTANCE_ACCOUNT_ID = p.INSTANCE_ACCOUNT_ID AND fe.total_execs > 0
+    LEFT JOIN flows_latest_month flm ON flm.INSTANCE_ACCOUNT_ID = p.INSTANCE_ACCOUNT_ID
     GROUP BY 1, 2
 )
 SELECT * FROM es_segmented ORDER BY feature, segment;
