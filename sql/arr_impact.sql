@@ -1,0 +1,145 @@
+-- ARR impact: net ARR (USD) of accounts at the ACTIVATED and ADOPTED funnel stages,
+-- per feature, as of the latest snapshot date.
+--
+-- ARR source: PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT
+-- (IS_LATEST_DATE = TRUE). Field INSTANCE_ACCOUNT_NET_ARR_USD = instance-level net ARR in USD.
+-- Verified 1 row per instance (87,555 rows / 87,555 instances, 0 null ARR).
+--
+-- Stage sets (identical semantics to sql/funnel_snapshot.sql):
+--   Activated = ZDP ACTIVATED flag = TRUE (meaningful use in last 28 days) at the latest
+--               snapshot; AI Agents: INSTANCE_IS_AI_AGENTS_PAID_ACTIVATED.
+--               Flows-derived features: >=1 completed step execution in the last 28 days
+--               (action_flows uses the aggregated executions table, which excludes
+--               system/custom_code logic actions; connectors = 2P customapi + 3P sub-categories
+--               except 'wait'; mcp_actions = 3P 'mcp', a subset of connectors).
+--   Adopted   = ZDP ADOPTED flag = TRUE (sustained use in last 28 days); flows-derived:
+--               >=2 completed step executions in the last 28 days (derived definition,
+--               mirrors the Approvals/Tasks "at least 2 in 28d" adopted rule).
+-- change_management uses the APPROVALS flags (documented proxy).
+--
+-- Note: flag features snapshot at the ES_ADOPTION/AI_AGENTS dates (2026-10-18), flows-derived
+-- sets at the flow-table date (2026-10-19), ARR from PCU (2026-10-18).
+--
+-- PARAMETERS (edit before running):
+SET end_date = '2026-10-19';
+--
+-- Run: snow sql -f sql/arr_impact.sql --connection zdp-global
+
+WITH pcu AS (
+    SELECT INSTANCE_ACCOUNT_ID, INSTANCE_ACCOUNT_NET_ARR_USD AS net_arr_usd
+    FROM PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT
+    WHERE IS_LATEST_DATE = TRUE
+),
+es_latest AS (
+    SELECT MAX(SOURCE_SNAPSHOT_DATE) AS snap_date
+    FROM FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT
+    WHERE SOURCE_SNAPSHOT_DATE <= $end_date
+),
+es AS (
+    SELECT INSTANCE_ACCOUNT_ID,
+           INSTANCE_IS_ITAM_ELIGIBLE, INSTANCE_IS_ITAM_ACTIVATED, INSTANCE_IS_ITAM_ADOPTED,
+           INSTANCE_IS_SERVICE_CATALOG_ELIGIBLE, INSTANCE_IS_SERVICE_CATALOG_ACTIVATED, INSTANCE_IS_SERVICE_CATALOG_ADOPTED,
+           INSTANCE_IS_APPROVALS_ELIGIBLE, INSTANCE_IS_APPROVALS_ACTIVATED, INSTANCE_IS_APPROVALS_ADOPTED,
+           INSTANCE_IS_TASKS_ELIGIBLE, INSTANCE_IS_TASKS_ACTIVATED, INSTANCE_IS_TASKS_ADOPTED
+    FROM FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT
+    WHERE SOURCE_SNAPSHOT_DATE = (SELECT snap_date FROM es_latest)
+),
+ai_latest AS (
+    SELECT MAX(SOURCE_SNAPSHOT_DATE) AS snap_date
+    FROM FUNCTIONAL.PRODUCT_ANALYTICS.AI_AGENTS_INSTANCE_DAILY_SNAPSHOT
+    WHERE SOURCE_SNAPSHOT_DATE <= $end_date
+),
+ai AS (
+    SELECT INSTANCE_ACCOUNT_ID,
+           INSTANCE_IS_AI_AGENTS_ELIGIBLE, INSTANCE_IS_AI_AGENTS_PAID_ACTIVATED, INSTANCE_IS_AI_AGENTS_PAID_ADOPTED
+    FROM FUNCTIONAL.PRODUCT_ANALYTICS.AI_AGENTS_INSTANCE_DAILY_SNAPSHOT
+    WHERE SOURCE_SNAPSHOT_DATE = (SELECT snap_date FROM ai_latest)
+),
+flow_latest AS (
+    SELECT MAX(SOURCE_SNAPSHOT_DATE) AS snap_date
+    FROM PROPAGATED_FUNCTIONAL.PRODUCT_ANALYTICS.FACT_AGGREGATED_ACTION_FLOW_EXECUTIONS_DAILY_SNAPSHOT
+    WHERE SOURCE_SNAPSHOT_DATE <= $end_date
+),
+flow_28d AS (
+    SELECT f.INSTANCE_ACCOUNT_ID,
+           SUM(f.COUNT_COMPLETED_ACTION_FLOW_STEP_EXECUTIONS) AS execs_28d
+    FROM PROPAGATED_FUNCTIONAL.PRODUCT_ANALYTICS.FACT_AGGREGATED_ACTION_FLOW_EXECUTIONS_DAILY_SNAPSHOT f
+    WHERE f.SOURCE_SNAPSHOT_DATE >= (SELECT DATEADD(day, -27, snap_date) FROM flow_latest)
+      AND f.SOURCE_SNAPSHOT_DATE <= (SELECT snap_date FROM flow_latest)
+    GROUP BY 1
+    HAVING SUM(f.COUNT_COMPLETED_ACTION_FLOW_STEP_EXECUTIONS) > 0
+),
+step_28d AS (
+    SELECT w.INSTANCE_ACCOUNT_ID,
+           w.WORKFLOW_STEP_TYPE_CATEGORY,
+           w.WORKFLOW_STEP_TYPE_SUB_CATEGORY,
+           SUM(w.COUNT_COMPLETED_WORKFLOW_STEP_EXECUTIONS) AS execs_28d
+    FROM PROPAGATED_FUNCTIONAL.PRODUCT_ANALYTICS.FACT_FLOWSTATE_WORKFLOW_EXECUTIONS_DAILY_SNAPSHOT w
+    WHERE w.SOURCE_SNAPSHOT_DATE >= (SELECT DATEADD(day, -27, snap_date) FROM flow_latest)
+      AND w.SOURCE_SNAPSHOT_DATE <= (SELECT snap_date FROM flow_latest)
+    GROUP BY 1, 2, 3
+    HAVING SUM(w.COUNT_COMPLETED_WORKFLOW_STEP_EXECUTIONS) > 0
+),
+step_28d_conn AS (
+    SELECT INSTANCE_ACCOUNT_ID, SUM(execs_28d) AS execs_28d
+    FROM step_28d
+    WHERE WORKFLOW_STEP_TYPE_CATEGORY IN ('2P', '3P')
+      AND WORKFLOW_STEP_TYPE_SUB_CATEGORY <> 'wait'
+    GROUP BY 1
+),
+step_28d_mcp AS (
+    SELECT INSTANCE_ACCOUNT_ID, SUM(execs_28d) AS execs_28d
+    FROM step_28d
+    WHERE WORKFLOW_STEP_TYPE_SUB_CATEGORY = 'mcp'
+    GROUP BY 1
+)
+SELECT
+    'itam' AS feature,
+    (SELECT snap_date FROM es_latest) AS snapshot_date,
+    COALESCE(SUM(CASE WHEN e.INSTANCE_IS_ITAM_ELIGIBLE = TRUE AND e.INSTANCE_IS_ITAM_ACTIVATED = TRUE THEN p.net_arr_usd END), 0) AS activated_arr_usd,
+    COALESCE(SUM(CASE WHEN e.INSTANCE_IS_ITAM_ELIGIBLE = TRUE AND e.INSTANCE_IS_ITAM_ADOPTED = TRUE THEN p.net_arr_usd END), 0) AS adopted_arr_usd
+FROM es e
+INNER JOIN pcu p ON p.INSTANCE_ACCOUNT_ID = e.INSTANCE_ACCOUNT_ID
+UNION ALL
+SELECT 'service_catalog', (SELECT snap_date FROM es_latest),
+    COALESCE(SUM(CASE WHEN e.INSTANCE_IS_SERVICE_CATALOG_ELIGIBLE = TRUE AND e.INSTANCE_IS_SERVICE_CATALOG_ACTIVATED = TRUE THEN p.net_arr_usd END), 0),
+    COALESCE(SUM(CASE WHEN e.INSTANCE_IS_SERVICE_CATALOG_ELIGIBLE = TRUE AND e.INSTANCE_IS_SERVICE_CATALOG_ADOPTED = TRUE THEN p.net_arr_usd END), 0)
+FROM es e
+INNER JOIN pcu p ON p.INSTANCE_ACCOUNT_ID = e.INSTANCE_ACCOUNT_ID
+UNION ALL
+SELECT 'change_management', (SELECT snap_date FROM es_latest),
+    COALESCE(SUM(CASE WHEN e.INSTANCE_IS_APPROVALS_ELIGIBLE = TRUE AND e.INSTANCE_IS_APPROVALS_ACTIVATED = TRUE THEN p.net_arr_usd END), 0),
+    COALESCE(SUM(CASE WHEN e.INSTANCE_IS_APPROVALS_ELIGIBLE = TRUE AND e.INSTANCE_IS_APPROVALS_ADOPTED = TRUE THEN p.net_arr_usd END), 0)
+FROM es e
+INNER JOIN pcu p ON p.INSTANCE_ACCOUNT_ID = e.INSTANCE_ACCOUNT_ID
+UNION ALL
+SELECT 'tasks', (SELECT snap_date FROM es_latest),
+    COALESCE(SUM(CASE WHEN e.INSTANCE_IS_TASKS_ELIGIBLE = TRUE AND e.INSTANCE_IS_TASKS_ACTIVATED = TRUE THEN p.net_arr_usd END), 0),
+    COALESCE(SUM(CASE WHEN e.INSTANCE_IS_TASKS_ELIGIBLE = TRUE AND e.INSTANCE_IS_TASKS_ADOPTED = TRUE THEN p.net_arr_usd END), 0)
+FROM es e
+INNER JOIN pcu p ON p.INSTANCE_ACCOUNT_ID = e.INSTANCE_ACCOUNT_ID
+UNION ALL
+SELECT 'es_ai_agents', (SELECT snap_date FROM ai_latest),
+    COALESCE(SUM(CASE WHEN a.INSTANCE_IS_AI_AGENTS_ELIGIBLE = TRUE AND a.INSTANCE_IS_AI_AGENTS_PAID_ACTIVATED = TRUE THEN p.net_arr_usd END), 0),
+    COALESCE(SUM(CASE WHEN a.INSTANCE_IS_AI_AGENTS_ELIGIBLE = TRUE AND a.INSTANCE_IS_AI_AGENTS_PAID_ADOPTED = TRUE THEN p.net_arr_usd END), 0)
+FROM ai a
+INNER JOIN pcu p ON p.INSTANCE_ACCOUNT_ID = a.INSTANCE_ACCOUNT_ID
+UNION ALL
+SELECT 'action_flows', (SELECT snap_date FROM flow_latest),
+    COALESCE(SUM(CASE WHEN f.execs_28d >= 1 THEN p.net_arr_usd END), 0),
+    COALESCE(SUM(CASE WHEN f.execs_28d >= 2 THEN p.net_arr_usd END), 0)
+FROM flow_28d f
+INNER JOIN pcu p ON p.INSTANCE_ACCOUNT_ID = f.INSTANCE_ACCOUNT_ID
+UNION ALL
+SELECT 'action_flow_connectors', (SELECT snap_date FROM flow_latest),
+    COALESCE(SUM(CASE WHEN s.execs_28d >= 1 THEN p.net_arr_usd END), 0),
+    COALESCE(SUM(CASE WHEN s.execs_28d >= 2 THEN p.net_arr_usd END), 0)
+FROM step_28d_conn s
+INNER JOIN pcu p ON p.INSTANCE_ACCOUNT_ID = s.INSTANCE_ACCOUNT_ID
+UNION ALL
+SELECT 'mcp_actions', (SELECT snap_date FROM flow_latest),
+    COALESCE(SUM(CASE WHEN s.execs_28d >= 1 THEN p.net_arr_usd END), 0),
+    COALESCE(SUM(CASE WHEN s.execs_28d >= 2 THEN p.net_arr_usd END), 0)
+FROM step_28d_mcp s
+INNER JOIN pcu p ON p.INSTANCE_ACCOUNT_ID = s.INSTANCE_ACCOUNT_ID
+ORDER BY feature;

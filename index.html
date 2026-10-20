@@ -50,72 +50,104 @@
     </details>
   </div>
 
-  <div id="app">
-    <div class="kpi-grid" id="kpis"></div>
+  <nav class="tabs" id="tabs" aria-label="Dashboard sections">
+    <button class="tab active" data-tab="overview" type="button">Overview</button>
+    <button class="tab" data-tab="funnel" type="button">Funnel</button>
+    <button class="tab" data-tab="trends" type="button">Trends</button>
+    <button class="tab" data-tab="mix" type="button">Product mix</button>
+    <button class="tab" data-tab="arr" type="button">ARR impact</button>
+    <button class="tab" data-tab="defs" type="button">Data &amp; definitions</button>
+  </nav>
 
-    <div class="panel-grid">
-      <div class="card span-2">
+  <div id="app">
+    <section data-tab-panel="overview">
+      <div class="kpi-grid" id="kpis"></div>
+      <div class="panel-grid">
+        <div class="card">
+          <h2>Where each feature stands</h2>
+          <p class="card-sub">Latest value per metric · column-scaled, more saturated is higher</p>
+          <div class="chart" id="chartHeat"></div>
+          <p id="heatEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
+        </div>
+        <div class="card">
+          <h2>Share of active usage</h2>
+          <p class="card-sub">Accounts using each feature · an account may use several</p>
+          <div class="chart" id="chartDonut"></div>
+          <p id="donutEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
+        </div>
+        <div class="card">
+          <h2>Adoption × Activation</h2>
+          <p class="card-sub">One point per feature</p>
+          <div class="chart" id="chartScatter"></div>
+          <p id="scatterEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
+        </div>
+        <div class="card">
+          <h2>Penetration by feature</h2>
+          <p class="card-sub">Accounts using as a share of accounts enabled · latest month</p>
+          <div class="chart" id="chartPen"></div>
+          <p id="penEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
+        </div>
+        <div class="card table-card span-2">
+          <h2>Data table</h2>
+          <p class="card-sub">Latest month in the selected range</p>
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Feature</th><th>Adoption</th><th>Δ MoM</th><th>Penetration</th><th>Activation</th>
+                <th>Accounts using</th><th>Accounts eligible</th><th>Activated accts</th><th>As of</th>
+              </tr>
+            </thead>
+            <tbody id="tblBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section data-tab-panel="funnel" hidden>
+      <div class="card">
+        <h2>Funnel by feature</h2>
+        <p class="card-sub" id="funnelSub">Eligible → penetrated → activated → adopted · latest snapshot · log scale</p>
+        <div class="funnel-grid">
+          <div class="chart" id="chartFunnel"></div>
+          <div class="chart" id="chartConv"></div>
+        </div>
+      </div>
+    </section>
+
+    <section data-tab-panel="trends" hidden>
+      <div class="card">
         <h2>Adoption over time</h2>
         <p class="card-sub">Accounts using each feature, as a share of eligible paid accounts · common scale</p>
         <div class="mini-grid" id="trendGrid"></div>
         <p id="trendEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No data in this range.</p>
       </div>
+    </section>
 
+    <section data-tab-panel="mix" hidden>
       <div class="card">
-        <h2>Where each feature stands</h2>
-        <p class="card-sub">Latest value per metric · column-scaled, more saturated is higher</p>
-        <div class="chart" id="chartHeat"></div>
-        <p id="heatEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
-      </div>
-
-      <div class="card">
-        <h2>Share of active usage</h2>
-        <p class="card-sub">Accounts using each feature · an account may use several</p>
-        <div class="chart" id="chartDonut"></div>
-        <p id="donutEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
-      </div>
-
-      <div class="card">
-        <h2>Adoption × Activation</h2>
-        <p class="card-sub">One point per feature · axes span the observed range</p>
-        <div class="chart" id="chartScatter"></div>
-        <p id="scatterEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
-      </div>
-
-      <div class="card">
-        <h2>Penetration by feature</h2>
-        <p class="card-sub">Accounts using as a share of accounts enabled · latest month</p>
-        <div class="chart" id="chartPen"></div>
-        <p id="penEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
-      </div>
-
-      <div class="card span-2" id="segPanel" hidden>
         <h2>Accounts using, by segment</h2>
-        <p class="card-sub">Stacked by product segment, where ZDP provides the breakdown</p>
+        <p class="card-sub">Stacked by market segment, where ZDP provides the breakdown</p>
         <div class="chart" id="chartSeg"></div>
       </div>
+    </section>
 
-      <div class="card table-card span-2">
-        <h2>Data table</h2>
-        <p class="card-sub">Latest month in the selected range</p>
-        <table class="data">
-          <thead>
-            <tr>
-              <th>Feature</th><th>Adoption</th><th>Δ MoM</th><th>Penetration</th><th>Activation</th>
-              <th>Accounts using</th><th>Accounts eligible</th><th>Activated accts</th><th>As of</th>
-            </tr>
-          </thead>
-          <tbody id="tblBody"></tbody>
-        </table>
+    <section data-tab-panel="arr" hidden>
+      <div class="card">
+        <h2>Net ARR of accounts using each feature</h2>
+        <p class="card-sub" id="arrSub">Activated vs adopted accounts · latest snapshot · net ARR (USD)</p>
+        <div class="chart" id="chartARR"></div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <footer>
-    <p class="defs" id="defs"></p>
-    <p class="defs" id="gaps" hidden></p>
-    <p class="src" id="sources"></p>
-  </footer>
+    <section data-tab-panel="defs" hidden>
+      <div class="card">
+        <h2>Data &amp; definitions</h2>
+        <p class="defs" id="defs"></p>
+        <p class="defs" id="gaps" hidden></p>
+        <p class="src" id="sources"></p>
+      </div>
+    </section>
+  </div>
 
   <div id="fatal" class="noscript-msg" hidden>
     The dashboard could not start — it needs <code>assets/app.js</code>, the two <code>data/*.js</code> files and the ECharts CDN to load.

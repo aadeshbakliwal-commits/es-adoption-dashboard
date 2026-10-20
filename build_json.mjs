@@ -43,6 +43,8 @@ const esRows = parseCsv(fs.readFileSync(path.join(SQL, 'es_funnel_monthly.csv'),
 const aiRows = parseCsv(fs.readFileSync(path.join(SQL, 'ai_agents_monthly.csv'), 'utf8'));
 const flRows = parseCsv(fs.readFileSync(path.join(SQL, 'action_flows_monthly.csv'), 'utf8'));
 const brRows = parseCsv(fs.readFileSync(path.join(SQL, 'product_breakdown_latest.csv'), 'utf8'));
+const fnRows = parseCsv(fs.readFileSync(path.join(SQL, 'funnel_snapshot.csv'), 'utf8'));
+const arrRows = parseCsv(fs.readFileSync(path.join(SQL, 'arr_impact.csv'), 'utf8'));
 
 // --- build monthly rows ------------------------------------------------------
 const monthly = [];
@@ -105,6 +107,41 @@ const product_breakdown = brRows.map(r => ({
   adoption_pct: pct(num(r.accounts_using), num(r.accounts_total)),
 })).sort((a, b) => a.feature.localeCompare(b.feature) || (b.adoption_pct ?? 0) - (a.adoption_pct ?? 0));
 
+// --- funnel snapshot (4 stages, nested within paid+eligible) -------------------
+const funnel_rows = fnRows.map(r => {
+  const row = {
+    feature: r.feature,
+    eligible: num(r.eligible),
+    penetrated: num(r.penetrated),
+    activated: num(r.activated),
+    adopted: num(r.adopted),
+  };
+  if (row.eligible < row.penetrated || row.penetrated < row.activated || row.activated < row.adopted) {
+    anomalies.push(`funnel ${r.feature}: stages not nested (eligible=${row.eligible}, penetrated=${row.penetrated}, activated=${row.activated}, adopted=${row.adopted})`);
+  }
+  return row;
+});
+const funnel = {
+  as_of: fnRows.map(r => r.snapshot_date).sort().pop(),
+  rows: funnel_rows,
+};
+
+// --- ARR impact (net ARR of accounts at the activated / adopted stages) --------
+const arr_rows = arrRows.map(r => {
+  const a = num(r.activated_arr_usd), d = num(r.adopted_arr_usd);
+  if (a < 0 || d < 0) anomalies.push(`arr ${r.feature}: negative ARR value`);
+  if (d > a) anomalies.push(`arr ${r.feature}: adopted_arr (${d}) > activated_arr (${a})`);
+  return {
+    feature: r.feature,
+    activated_arr_usd: a === null ? null : Math.round(a),
+    adopted_arr_usd: d === null ? null : Math.round(d),
+  };
+});
+const arr = {
+  as_of: arrRows.map(r => r.snapshot_date).sort().pop(),
+  rows: arr_rows,
+};
+
 // --- current-period summary ---------------------------------------------------
 const DISPLAY = {
   itam: 'ITAM (IT Asset Management)',
@@ -165,6 +202,8 @@ const master = {
   sources,
   monthly,
   product_breakdown,
+  funnel,
+  arr,
 };
 fs.writeFileSync(path.join(DATA, 'features_master.json'), JSON.stringify(master, null, 2) + '\n');
 

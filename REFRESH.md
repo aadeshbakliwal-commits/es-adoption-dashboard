@@ -22,7 +22,11 @@ snow sql -f sql/action_flows_monthly.sql --connection zdp-global --format csv > 
 # 3. segment breakdown at the latest snapshot
 snow sql -f sql/product_breakdown_latest.sql --connection zdp-global --format csv > sql/product_breakdown_latest.csv
 
-# 4. rebuild the JSON deliverables (includes sanity checks and anomaly flags)
+# 4. 4-stage funnel snapshot + ARR impact (latest snapshot)
+snow sql -f sql/funnel_snapshot.sql --connection zdp-global --format csv > sql/funnel_snapshot.csv
+snow sql -f sql/arr_impact.sql --connection zdp-global --format csv > sql/arr_impact.csv
+
+# 5. rebuild the JSON deliverables (includes sanity checks and anomaly flags)
 node build_json.mjs
 
 # 5. wrap the JSONs as data/*.js so index.html (static site) picks them up
@@ -97,6 +101,48 @@ into the CSVs; `build_json.mjs` skips them automatically. If a query errors, re-
    eligibility flag → activation/adoption denominators = all paid customers.
 7. **User-level metrics unavailable** → `active_users`/`licensed_users` are null and penetration
    uses the account-level fallback definition.
+
+## Funnel snapshot (`funnel` block in features_master.json)
+
+4-stage nested funnel per feature at the latest snapshot date (query: `sql/funnel_snapshot.sql`).
+Every stage is counted within **paid AND feature-eligible** instances, so
+eligible >= penetrated >= activated >= adopted. Reference check: ITAM 37,153 / 1,658 / 442 / 222.
+
+| Stage | Flag-based features | Flow-derived features |
+|---|---|---|
+| `eligible` | per-feature `ELIGIBLE` flag | all paid customers (no eligibility flag exists) |
+| `penetrated` | `PENETRATED` flag (enabled / first meaningful use, 6mo) | >=1 completed step execution **ever** up to snapshot (bounded by flow-table history, starts 2025-08-20) |
+| `activated` | `ACTIVATED` flag (meaningful use, 28d) | >=1 completed step execution in the **last 28 days** |
+| `adopted` | `ADOPTED` flag (sustained use, 28d) | >=2 completed step executions in the last 28 days (derived, mirrors the Approvals/Tasks "at least 2 in 28d" rule) |
+
+Per-feature sources:
+
+- `itam`, `service_catalog`, `tasks`: `INSTANCE_IS_*` flags in `ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT` (2026-10-18)
+- `change_management`: `INSTANCE_IS_APPROVALS_*` flags in the same table (documented proxy; 2026-10-18)
+- `es_ai_agents`: `INSTANCE_IS_AI_AGENTS_PAID_*` flags in `AI_AGENTS_INSTANCE_DAILY_SNAPSHOT` (2026-10-18)
+- `action_flows`: `FACT_AGGREGATED_ACTION_FLOW_EXECUTIONS_DAILY_SNAPSHOT` (propagated; 2026-10-19)
+- `action_flow_connectors`, `mcp_actions`: `FACT_FLOWSTATE_WORKFLOW_EXECUTIONS_DAILY_SNAPSHOT`
+  (propagated; 2026-10-19), split by `WORKFLOW_STEP_TYPE_CATEGORY` / `_SUB_CATEGORY`:
+  connectors = 2P `customapi` + all 3P sub-categories except `wait` (includes AI model steps
+  claude/openai/gemini); `mcp_actions` = 3P `mcp` only and is a **subset of connectors**.
+  1P `system` logic steps excluded everywhere, matching the aggregated table's definition.
+- `funnel.as_of` = 2026-10-19 (max snapshot date across sources).
+
+## ARR impact (`arr` block in features_master.json)
+
+Net ARR (USD) of the accounts at the `activated` / `adopted` funnel stages, per feature
+(query: `sql/arr_impact.sql`).
+
+- **ARR source:** `PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT`,
+  `IS_LATEST_DATE = TRUE`, field `INSTANCE_ACCOUNT_NET_ARR_USD` (instance-level net ARR, USD).
+  Verified 1 row per instance (87,555 rows / 87,555 instances, 0 nulls) on 2026-10-18.
+- Stage sets identical to the funnel block (same flags; flow-derived stages use the same
+  >=1 / >=2 completed-executions-in-28d definitions), joined to PCU on `INSTANCE_ACCOUNT_ID`.
+- All 8 features have measurable adopted values (flows-derived via the documented >=2-in-28d
+  rule), so no nulls were needed. Rounded to whole USD in the JSON.
+- `mcp_actions` ARR (~$1.6M activated) is based on 21 accounts — treat as directional.
+- Note the 28d activated stage for flows-derived features (trailing window ending 2026-10-19)
+  differs slightly from the monthly "in-month usage" counts (2,306 vs 2,157 for action_flows).
 
 ## Flagged anomalies (MoM swings >50% in adoption_pct)
 

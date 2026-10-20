@@ -1,5 +1,5 @@
 window.ES_MASTER = {
-  "generated_at": "2026-10-20T05:39:14Z",
+  "generated_at": "2026-10-20T06:08:03Z",
   "as_of": "2026-10-19",
   "definitions": {
     "adoption": "Distinct paid accounts with meaningful feature usage in the period (ZDP ACTIVATED flag = usage within last 28 days at the month-end snapshot; Action Flows: >=1 completed flow-step execution in the month) divided by paid accounts eligible for the feature.",
@@ -1008,6 +1008,112 @@ window.ES_MASTER = {
       "accounts_using": 0,
       "adoption_pct": 0
     }
-  ]
+  ],
+  "funnel": {
+    "as_of": "2026-10-19",
+    "rows": [
+      {
+        "feature": "action_flow_connectors",
+        "eligible": 87555,
+        "penetrated": 1789,
+        "activated": 1353,
+        "adopted": 1323
+      },
+      {
+        "feature": "action_flows",
+        "eligible": 87555,
+        "penetrated": 2934,
+        "activated": 2306,
+        "adopted": 2269
+      },
+      {
+        "feature": "change_management",
+        "eligible": 31088,
+        "penetrated": 1382,
+        "activated": 526,
+        "adopted": 393
+      },
+      {
+        "feature": "es_ai_agents",
+        "eligible": 80234,
+        "penetrated": 2094,
+        "activated": 1302,
+        "adopted": 1045
+      },
+      {
+        "feature": "itam",
+        "eligible": 37153,
+        "penetrated": 1658,
+        "activated": 442,
+        "adopted": 222
+      },
+      {
+        "feature": "mcp_actions",
+        "eligible": 87555,
+        "penetrated": 43,
+        "activated": 21,
+        "adopted": 20
+      },
+      {
+        "feature": "service_catalog",
+        "eligible": 37153,
+        "penetrated": 690,
+        "activated": 158,
+        "adopted": 93
+      },
+      {
+        "feature": "tasks",
+        "eligible": 31088,
+        "penetrated": 1074,
+        "activated": 398,
+        "adopted": 279
+      }
+    ]
+  },
+  "arr": {
+    "as_of": "2026-10-19",
+    "rows": [
+      {
+        "feature": "action_flow_connectors",
+        "activated_arr_usd": 293214790,
+        "adopted_arr_usd": 291081331
+      },
+      {
+        "feature": "action_flows",
+        "activated_arr_usd": 442644778,
+        "adopted_arr_usd": 439838450
+      },
+      {
+        "feature": "change_management",
+        "activated_arr_usd": 64399018,
+        "adopted_arr_usd": 52277325
+      },
+      {
+        "feature": "es_ai_agents",
+        "activated_arr_usd": 286859369,
+        "adopted_arr_usd": 224746486
+      },
+      {
+        "feature": "itam",
+        "activated_arr_usd": 20955662,
+        "adopted_arr_usd": 13563334
+      },
+      {
+        "feature": "mcp_actions",
+        "activated_arr_usd": 1584606,
+        "adopted_arr_usd": 1556214
+      },
+      {
+        "feature": "service_catalog",
+        "activated_arr_usd": 14315650,
+        "adopted_arr_usd": 9424536
+      },
+      {
+        "feature": "tasks",
+        "activated_arr_usd": 43103136,
+        "adopted_arr_usd": 29960311
+      }
+    ]
+  }
 }
 

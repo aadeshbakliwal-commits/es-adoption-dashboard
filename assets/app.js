@@ -14,10 +14,19 @@
     action_flows: { name: "Advanced Action Flows", slot: 6 }
   };
 
+  // Features presented as "not instrumented" gap cards, not data cards.
+  // saas_management: no ZDP dataset. change_management: only an Approvals-funnel
+  // proxy exists in ZDP (kept in the JSON/SQL, intentionally not shown).
+  const GAP_FEATURES = [
+    { key: "saas_management", name: "SaaS Management", note: "Not instrumented in ZDP yet" },
+    { key: "change_management", name: "Change Management", note: "Not instrumented in ZDP yet" }
+  ];
+
   const state = {
     preset: "12m",           // 3m | 6m | 12m | all | custom
     from: null, to: null,    // "YYYY-MM" for custom
-    active: new Set(Object.keys(FEATURES)),
+    tab: "overview",
+    active: new Set(Object.keys(FEATURES).filter((k) => !GAP_FEATURES.some((g) => g.key === k))),
     charts: []
   };
 
@@ -65,6 +74,29 @@
     return Math.abs(+v) < 10 ? (+v).toFixed(2) + "%" : (+v).toFixed(1) + "%";
   }
   function fmtInt(v) { return (v == null || isNaN(v)) ? "—" : (+v).toLocaleString("en-US"); }
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    const [y, m, d] = String(iso).split("-");
+    return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][+m - 1] + " " + (+d) + ", " + y;
+  }
+  function fmtK(v) {
+    if (v == null || isNaN(v)) return "—";
+    if (v >= 1e6) return (v / 1e6).toFixed(1) + "M";
+    if (v >= 1e3) return (v / 1e3).toFixed(1) + "k";
+    return String(Math.round(v));
+  }
+  function fmtMoney(v) {
+    if (v == null || isNaN(v)) return "—";
+    if (v >= 1e9) return "$" + (v / 1e9).toFixed(1) + "B";
+    if (v >= 1e6) return "$" + (v / 1e6).toFixed(1) + "M";
+    if (v >= 1e3) return "$" + Math.round(v / 1e3) + "K";
+    return "$" + Math.round(v);
+  }
+  const FUNNEL_NAMES = {
+    itam: "ITAM", service_catalog: "Service Catalog", change_management: "Approvals", tasks: "Tasks",
+    es_ai_agents: "ES AI Agents", action_flows: "Action Flows", action_flow_connectors: "Action Flow Connectors",
+    mcp_actions: "MCP Actions"
+  };
 
   /* ---------- data shaping ---------- */
   function allMonths() {
@@ -144,6 +176,14 @@
         <div class="k-value">${fmtPct(row ? row.adoption_pct : null)}</div>
         <div class="k-delta">${delta}</div>
         <div class="k-sub">${fmtInt(row && row.accounts_using)} of ${fmtInt(row && row.accounts_total)} eligible accounts</div>`;
+      wrap.appendChild(el);
+    });
+    GAP_FEATURES.forEach((g) => {
+      const el = document.createElement("div");
+      el.className = "kpi gap";
+      el.innerHTML = `
+        <div class="k-label">${esc(g.name)}</div>
+        <div class="k-note">${esc(g.note)}</div>`;
       wrap.appendChild(el);
     });
     if (!activeFeatures().length) wrap.innerHTML = '<div class="card"><p style="margin:8px;color:var(--muted)">No features selected — pick products in the filter above.</p></div>';
@@ -323,7 +363,7 @@
     el.style.height = "300px";
     makeChart(el, {
       animation: false,
-      grid: Object.assign({}, baseGrid, { top: 18, bottom: 26 }),
+      grid: Object.assign({}, baseGrid, { left: 28, top: 18, bottom: 26 }),
       xAxis: {
         type: "value", min: 0, max: xMax, name: "Adoption %", nameLocation: "middle", nameGap: 24,
         nameTextStyle: Object.assign(axisLabel(), { fontSize: 10 }),
@@ -386,13 +426,117 @@
     });
   }
 
+  function renderFunnel() {
+    const panel = document.querySelector('[data-tab-panel="funnel"]');
+    const f = MASTER.funnel;
+    if (!f || !f.rows || !f.rows.length) { panel.hidden = true; return; }
+    panel.hidden = false;
+    const rows = f.rows;
+    document.getElementById("funnelSub").textContent =
+      "Eligible → penetrated → activated → adopted · snapshot " + fmtDate(f.as_of) + " · log scale";
+    const names = rows.map((r) => FUNNEL_NAMES[r.feature] || r.feature);
+    const isD = isDark();
+    const eligibleColor = isD ? "#4A4C47" : "#B9BBB6";
+    const ramp = isD ? ["#184f95", "#256abf", "#3987e5"] : ["#5598e7", "#1c5cab", "#0d366b"];
+    const stages = [["penetrated", "Penetrated"], ["activated", "Activated"], ["adopted", "Adopted"]];
+    const maxEligible = Math.max(...rows.map((r) => Math.max(r.eligible || 0, r.penetrated || 0)));
+    const barEl = document.getElementById("chartFunnel");
+    barEl.style.height = "380px";
+    makeChart(barEl, {
+      animation: false,
+      grid: { left: 30, right: 10, top: 34, bottom: 2, containLabel: true },
+      legend: { top: 0, left: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: cssVar("--text-2"), fontSize: 11, fontFamily: cssVar("--font") } },
+      xAxis: { type: "category", data: names, axisLine: { lineStyle: { color: cssVar("--axis") } }, axisTick: { show: false }, axisLabel: Object.assign(axisLabel(), { fontSize: 10, interval: 0, rotate: 32 }) },
+      yAxis: { type: "log", min: 10, max: Math.max(100000, maxEligible * 1.5), axisLabel: Object.assign(axisLabel(), { formatter: fmtK }), splitLine: splitLine() },
+      tooltip: tooltipOpts({
+        trigger: "axis",
+        formatter: (ps) => ps.filter((p) => p.value != null).map((p) => `<b>${fmtInt(p.value)}</b> <span style="color:${cssVar("--muted")}">${esc(p.seriesName)}</span>`).join("<br>")
+      }),
+      series: [
+        { name: "Eligible", type: "bar", data: rows.map((r) => r.eligible), itemStyle: { color: eligibleColor, borderRadius: [3, 3, 0, 0] } },
+        ...stages.map(([key, label], i) => ({
+          name: label, type: "bar", data: rows.map((r) => r[key]),
+          itemStyle: { color: ramp[i], borderRadius: [3, 3, 0, 0] },
+          label: { show: true, position: "top", formatter: (p) => fmtK(p.value), color: cssVar("--text-2"), fontSize: 8.5, fontFamily: cssVar("--font") }
+        }))
+      ]
+    });
+    const pct = (a, b) => (a == null || !b) ? null : a / b * 100;
+    const convCols = [
+      ["Penetration", "penetrated of eligible", (r) => pct(r.penetrated, r.eligible)],
+      ["Activation", "activated of penetrated", (r) => pct(r.activated, r.penetrated)],
+      ["Adoption", "adopted of activated", (r) => pct(r.adopted, r.activated)]
+    ];
+    const colMax = convCols.map(([, , get]) => Math.max(5, ...rows.map((r) => get(r) || 0)));
+    const data = [];
+    rows.forEach((r, y) => convCols.forEach(([, , get], x) => {
+      const v = get(r);
+      const bg = v == null ? "transparent" : rampColor(v / colMax[x] * 100);
+      data.push({
+        value: [x, y, v],
+        itemStyle: { color: bg, borderColor: cssVar("--surface"), borderWidth: 2, borderRadius: 3 },
+        label: { color: v == null ? cssVar("--muted") : (lum(bg) > 0.42 ? "#11110D" : "#F5F4EE") }
+      });
+    }));
+    const cEl = document.getElementById("chartConv");
+    cEl.style.height = rows.length * 42 + 64 + "px";
+    makeChart(cEl, {
+      animation: false,
+      title: { text: "Stage conversion rates (%)", left: 0, top: 0, textStyle: { color: cssVar("--text"), fontSize: 11.5, fontWeight: 600, fontFamily: cssVar("--font") } },
+      grid: { left: 6, right: 12, top: 36, bottom: 2, containLabel: true },
+      xAxis: { type: "category", data: ["Penetration", "Activation", "Adoption"], position: "top", axisLine: { show: false }, axisTick: { show: false }, axisLabel: Object.assign(axisLabel(), { fontSize: 10.5, color: cssVar("--text-2") }) },
+      yAxis: { type: "category", data: names, inverse: true, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: cssVar("--text"), fontSize: 11, fontFamily: cssVar("--font") } },
+      tooltip: tooltipOpts({
+        formatter: (p) => {
+          const r = rows[p.value[1]];
+          const v = p.value[2];
+          return `<b>${v == null ? "—" : (+v).toFixed(1) + "%"}</b><br><span style="color:${cssVar("--muted")}">${esc(FUNNEL_NAMES[r.feature] || r.feature)} · ${esc(convCols[p.value[0]][1])}</span>`;
+        }
+      }),
+      series: [{
+        type: "heatmap", data,
+        label: { show: true, formatter: (p) => p.value[2] == null ? "—" : (+p.value[2]).toFixed(1), fontSize: 10.5, fontWeight: 600, fontFamily: cssVar("--font") },
+        emphasis: { itemStyle: { borderColor: cssVar("--hairline-strong") } }
+      }]
+    });
+  }
+
+  function renderARR() {
+    const panel = document.querySelector('[data-tab-panel="arr"]');
+    const a = MASTER.arr;
+    if (!a || !a.rows || !a.rows.length) { panel.hidden = true; return; }
+    panel.hidden = false;
+    document.getElementById("arrSub").textContent = "Activated vs adopted accounts · snapshot " + fmtDate(a.as_of) + " · net ARR (USD)";
+    const rows = a.rows;
+    const names = rows.map((r) => FUNNEL_NAMES[r.feature] || r.feature);
+    const colors = isDark() ? ["#3987e5", "#86b6ef"] : ["#1c5cab", "#0d366b"];
+    const el = document.getElementById("chartARR");
+    el.style.height = "380px";
+    makeChart(el, {
+      animation: false,
+      grid: { left: 8, right: 14, top: 34, bottom: 2, containLabel: true },
+      legend: { top: 0, left: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: cssVar("--text-2"), fontSize: 11, fontFamily: cssVar("--font") } },
+      xAxis: { type: "category", data: names, axisLine: { lineStyle: { color: cssVar("--axis") } }, axisTick: { show: false }, axisLabel: Object.assign(axisLabel(), { fontSize: 10, interval: 0, rotate: 24 }) },
+      yAxis: { type: "value", axisLabel: Object.assign(axisLabel(), { formatter: fmtMoney }), splitLine: splitLine() },
+      tooltip: tooltipOpts({
+        trigger: "axis",
+        formatter: (ps) => ps.filter((p) => p.value != null).map((p) => `<b>${fmtMoney(p.value)}</b> <span style="color:${cssVar("--muted")}">${esc(p.seriesName)}</span>`).join("<br>")
+      }),
+      series: [
+        { name: "Activated", type: "bar", data: rows.map((r) => r.activated_arr_usd), itemStyle: { color: colors[0], borderRadius: [3, 3, 0, 0] }, label: { show: true, position: "top", formatter: (p) => fmtMoney(p.value), color: cssVar("--text-2"), fontSize: 9, fontFamily: cssVar("--font") } },
+        { name: "Adopted", type: "bar", data: rows.map((r) => r.adopted_arr_usd), itemStyle: { color: colors[1], borderRadius: [3, 3, 0, 0] }, label: { show: true, position: "top", formatter: (p) => fmtMoney(p.value), color: cssVar("--text-2"), fontSize: 9, fontFamily: cssVar("--font") } }
+      ]
+    });
+  }
+
   function renderSegments() {
-    const panel = document.getElementById("segPanel");
+    const panel = document.querySelector('[data-tab-panel="mix"]');
+    const tabBtn = document.querySelector('#tabs .tab[data-tab="mix"]');
     const bd = MASTER.product_breakdown || [];
     const feats = activeFeatures();
-    const usable = feats.filter((f) => bd.some((r) => r.feature === f));
-    if (!usable.length) { panel.hidden = true; return; }
-    panel.hidden = false;
+    const usable = feats.filter((f) => bd.some((r) => r.feature === f && r.product));
+    if (!usable.length) { panel.hidden = true; tabBtn.hidden = true; return; }
+    panel.hidden = false; tabBtn.hidden = false;
     const products = [];
     usable.forEach((f) => bd.filter((r) => r.feature === f && r.product).forEach((r) => { if (!products.includes(r.product)) products.push(r.product); }));
     if (!products.length) { panel.hidden = true; return; }
@@ -455,21 +599,23 @@
       `DATA AS OF ${MASTER.as_of || "?"} · REFRESHED ${(MASTER.generated_at || "?").slice(0, 10)}`;
     const defs = MASTER.definitions || {};
     document.getElementById("defs").innerHTML =
-      `<strong>Adoption</strong> — ${esc(defs.adoption || "—")} &nbsp; <strong>Penetration</strong> — ${esc(defs.penetration || "—")} &nbsp; <strong>Activation</strong> — ${esc(defs.activation || "—")}` +
-      (defs.account_universe ? `<br><strong>Account universe</strong> — ${esc(defs.account_universe)}` : "");
+      `<strong>Metric definitions.</strong><br>
+       <strong>Adoption</strong> — ${esc(defs.adoption || "—")}<br>
+       <strong>Penetration</strong> — ${esc(defs.penetration || "—")}<br>
+       <strong>Activation</strong> — ${esc(defs.activation || "—")}<br>
+       <strong>Account universe</strong> — ${esc(defs.account_universe || "—")}
+       <br><br><strong>Funnel stages (ZDP).</strong><br>
+       <strong>Eligible</strong> — the account's plan entitles it to the feature.<br>
+       <strong>Penetrated</strong> — the feature has been set up or configured.<br>
+       <strong>Activated</strong> — the feature has meaningful first usage.<br>
+       <strong>Adopted</strong> — the feature has sustained, recurring usage.`;
+    const gapsEl = document.getElementById("gaps");
+    gapsEl.hidden = false;
+    gapsEl.innerHTML = `<strong>Known gaps</strong> — SaaS Management and Change Management are not instrumented in ZDP (Change Management has only an Approvals-funnel proxy; its data is kept in the repo's JSON but not shown) · ` +
+      `ES AI Agents covers the AI Agents product across CX and EX.`;
     const src = document.getElementById("sources");
     src.innerHTML = "Sources: " + (MASTER.sources || []).map((s) => `${esc(FEATURES[s.feature] ? FEATURES[s.feature].name : s.feature)} <code>${esc(s.table)}</code> (fresh as of ${esc(s.freshness)})`).join(" · ") +
       " · Refresh: <code>bin/refresh.sh</code> in the repo.";
-    const ranked = new Set(SUMMARY.features_ranked || []);
-    const gaps = Object.keys(FEATURES).filter((k) => !ranked.has(k));
-    const gapsEl = document.getElementById("gaps");
-    if (gaps.length) {
-      gapsEl.hidden = false;
-      gapsEl.innerHTML = `<strong>Known gaps</strong> — ${gaps.map((g) => esc(FEATURES[g].name)).join(", ")}: no usable ZDP dataset, so it is not shown (do not treat absence as zero) · ` +
-        `Change Management is proxied by the Approvals funnel · ES AI Agents covers the AI Agents product across CX and EX.`;
-    } else {
-      gapsEl.hidden = true;
-    }
   }
 
   /* ---------- filters ---------- */
@@ -501,10 +647,10 @@
         syncFaces(); renderAll();
       }
     };
-    // feature checkboxes
+    // feature checkboxes (gap features have no data cards, so no filter rows)
     const list = document.getElementById("featureList");
     list.innerHTML = "";
-    (SUMMARY.features_ranked || Object.keys(FEATURES)).forEach((f) => {
+    (SUMMARY.features_ranked || Object.keys(FEATURES)).filter((k) => !GAP_FEATURES.some((g) => g.key === k)).forEach((f) => {
       const r = latestRow(f) || {};
       const row = document.createElement("div");
       row.className = "check-row" + (state.active.has(f) ? " selected" : "");
@@ -520,7 +666,7 @@
     allRow.className = "preset-row";
     allRow.innerHTML = '<span style="font-weight:600">Reset — all products</span><span></span>';
     allRow.addEventListener("click", () => {
-      state.active = new Set(Object.keys(FEATURES));
+      state.active = new Set(Object.keys(FEATURES).filter((k) => !GAP_FEATURES.some((g) => g.key === k)));
       renderAll();
     });
     list.appendChild(allRow);
@@ -533,7 +679,8 @@
   }
   function syncFaces() {
     const n = state.active.size;
-    document.getElementById("featureFaceLabel").textContent = n === Object.keys(FEATURES).length ? "All products" : `${n} selected`;
+    const dataTotal = Object.keys(FEATURES).length - GAP_FEATURES.length;
+    document.getElementById("featureFaceLabel").textContent = n === dataTotal ? "All products" : `${n} selected`;
     document.getElementById("rangeFaceLabel").textContent =
       ({ "3m": "Last 3 months", "6m": "Last 6 months", "12m": "Last 12 months", "all": "All data" }[state.preset]) ||
       (state.from && state.to ? `${fmtMonth(state.from <= state.to ? state.from : state.to)} – ${fmtMonth(state.from <= state.to ? state.to : state.from)}` : "Custom range");
@@ -560,21 +707,33 @@
       document.documentElement.setAttribute("data-theme", next);
       try { localStorage.setItem("es-theme", next); } catch (e) { /* per-viewer convenience only */ }
       paint();
+      renderAll();
     });
-    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", paint);
+    window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { paint(); renderAll(); });
   }
 
   /* ---------- boot ---------- */
+  const TAB_RENDER = {
+    overview: [renderKPIs, renderHeatmap, renderDonut, renderScatter, renderPenetration, renderTable],
+    funnel: [renderFunnel],
+    trends: [renderTrends],
+    mix: [renderSegments],
+    arr: [renderARR],
+    defs: []
+  };
+  function switchTab(tab) {
+    state.tab = tab;
+    document.querySelectorAll("#tabs .tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+    document.querySelectorAll("[data-tab-panel]").forEach((s) => { s.hidden = s.dataset.tabPanel !== tab; });
+    try { history.replaceState(null, "", "?tab=" + tab); } catch (e) { /* file:// may reject */ }
+    renderAll();
+  }
+  function bindTabs() {
+    document.querySelectorAll("#tabs .tab").forEach((b) => b.addEventListener("click", () => switchTab(b.dataset.tab)));
+  }
   function renderAll() {
     disposeCharts();
-    renderKPIs();
-    renderTrends();
-    renderHeatmap();
-    renderDonut();
-    renderScatter();
-    renderPenetration();
-    renderSegments();
-    renderTable();
+    (TAB_RENDER[state.tab] || []).forEach((fn) => fn());
     syncFaces();
   }
   function boot() {
@@ -586,8 +745,10 @@
     document.getElementById("placeholderStrip").hidden = !MASTER.placeholder;
     bindTheme();
     bindFilters();
+    bindTabs();
     renderMeta();
-    renderAll();
+    const initial = new URLSearchParams(location.search).get("tab");
+    switchTab(TAB_RENDER[initial] ? initial : "overview");
     let t;
     window.addEventListener("resize", () => { clearTimeout(t); t = setTimeout(renderAll, 150); });
   }

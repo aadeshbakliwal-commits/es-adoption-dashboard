@@ -13,6 +13,8 @@ echo "2/5 pulling monthly funnels…"
 snow sql -f sql/es_funnel_monthly.sql --connection zdp-global --format csv > sql/es_funnel_monthly.csv
 snow sql -f sql/ai_agents_monthly.sql --connection zdp-global --format csv > sql/ai_agents_monthly.csv
 snow sql -f sql/action_flows_monthly.sql --connection zdp-global --format csv > sql/action_flows_monthly.csv
+snow sql -f sql/funnel_snapshot.sql --connection zdp-global --format csv > sql/funnel_snapshot.csv
+snow sql -f sql/arr_impact.sql --connection zdp-global --format csv > sql/arr_impact.csv
 
 echo "3/5 pulling segment breakdown…"
 snow sql -f sql/product_breakdown_latest.sql --connection zdp-global --format csv > sql/product_breakdown_latest.csv
