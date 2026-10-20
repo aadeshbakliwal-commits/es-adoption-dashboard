@@ -11,7 +11,8 @@
     es_ai_agents: { name: "ES AI Agents", slot: 3 },
     saas_management: { name: "SaaS Management", slot: 4 },
     change_management: { name: "Change Management", slot: 5 },
-    action_flows: { name: "Advanced Action Flows", slot: 6 }
+    action_flows: { name: "Action Flows (base)", slot: 6 },
+    advanced_action_flows: { name: "Advanced Action Flows", slot: 1 }
   };
 
   // Features presented as "not instrumented" gap cards, not data cards.
@@ -24,7 +25,9 @@
 
   // Features measured in ZDP but intentionally out of scope for this dashboard
   // (user decision 2026-10-20): excluded from every view, no gap card.
-  const HIDDEN_FEATURES = ["tasks", "mcp_actions", "action_flow_connectors"];
+  // `action_flows` = the BASE Action Flows capability — distinct from Advanced
+  // Action Flows, which the owner wants; excluded until its dedicated pull lands.
+  const HIDDEN_FEATURES = ["action_flows", "tasks", "mcp_actions", "action_flow_connectors"];
   const isExcluded = (k) => GAP_FEATURES.some((g) => g.key === k) || HIDDEN_FEATURES.includes(k);
 
   const state = {
@@ -99,8 +102,8 @@
   }
   const FUNNEL_NAMES = {
     itam: "ITAM", service_catalog: "Service Catalog", change_management: "Approvals", tasks: "Tasks",
-    es_ai_agents: "ES AI Agents", action_flows: "Action Flows", action_flow_connectors: "Action Flow Connectors",
-    mcp_actions: "MCP Actions"
+    es_ai_agents: "ES AI Agents", action_flows: "Action Flows (base)", action_flow_connectors: "Action Flow Connectors",
+    mcp_actions: "MCP Actions", advanced_action_flows: "Advanced Action Flows"
   };
 
   /* ---------- data shaping ---------- */
@@ -620,7 +623,8 @@
     const gapsEl = document.getElementById("gaps");
     gapsEl.hidden = false;
     gapsEl.innerHTML = `<strong>Scope &amp; known gaps</strong> — SaaS Management and Change Management are not instrumented in ZDP (Change Management has only an Approvals-funnel proxy; its data is kept in the repo's JSON but not shown) · ` +
-      `Tasks, MCP Actions and Action Flow Connectors are measured in ZDP but out of scope for this dashboard · ` +
+      `Tasks, MCP Actions, Action Flow Connectors and base Action Flows are measured in ZDP but out of scope for this dashboard · ` +
+      `Advanced Action Flows is shown separately from base Action Flows · ` +
       `ES AI Agents covers the AI Agents product across CX and EX.`;
     const src = document.getElementById("sources");
     src.innerHTML = "Sources: " + (MASTER.sources || []).map((s) => `${esc(FEATURES[s.feature] ? FEATURES[s.feature].name : s.feature)} <code>${esc(s.table)}</code> (fresh as of ${esc(s.freshness)})`).join(" · ") +
