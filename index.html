@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ES Feature Adoption</title>
+<meta name="description" content="Adoption, penetration and activation across the Zendesk Employee Service suite, from ZDP.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <span class="badge">Employee Service · Zendesk Data Platform</span>
+    <div class="masthead-row">
+      <div>
+        <h1>ES Feature Adoption</h1>
+        <p class="subtitle">Adoption, penetration and activation across the Employee Service suite</p>
+      </div>
+      <div class="head-meta">
+        <div class="stamp" id="stamp">DATA AS OF —</div>
+        <span class="tag pill">Zendesk internal</span><br>
+        <button class="theme-btn" id="themeBtn" type="button">Dark mode</button>
+      </div>
+    </div>
+    <div class="placeholder-strip" id="placeholderStrip" hidden>
+      <strong>Placeholder data.</strong> Shown until the first ZDP pull completes — run <code>bin/refresh.sh</code> to load real numbers.
+    </div>
+  </header>
+
+  <div class="filter-row" id="filters">
+    <span class="filter-label">Range</span>
+    <details class="filter" id="rangeMenu">
+      <summary><span id="rangeFaceLabel">Last 12 months</span></summary>
+      <div class="popover">
+        <div id="rangeList"></div>
+        <div class="custom">
+          <label for="fromMonth">From</label><input type="month" id="fromMonth">
+          <label for="toMonth">To</label><input type="month" id="toMonth">
+          <button class="apply" id="applyRange" type="button">Apply custom range</button>
+        </div>
+      </div>
+    </details>
+    <span class="filter-label">Products</span>
+    <details class="filter" id="featureMenu">
+      <summary><span id="featureFaceLabel">All products</span></summary>
+      <div class="popover"><div class="check-list" id="featureList"></div></div>
+    </details>
+  </div>
+
+  <div id="app">
+    <div class="kpi-grid" id="kpis"></div>
+
+    <div class="panel-grid">
+      <div class="card span-2">
+        <h2>Adoption over time</h2>
+        <p class="card-sub">Accounts using each feature, as a share of the account universe · common scale</p>
+        <div class="mini-grid" id="trendGrid"></div>
+        <p id="trendEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No data in this range.</p>
+      </div>
+
+      <div class="card">
+        <h2>Where each feature stands</h2>
+        <p class="card-sub">Latest value per metric · more saturated is higher</p>
+        <div class="chart" id="chartHeat"></div>
+        <p id="heatEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
+      </div>
+
+      <div class="card">
+        <h2>Share of active usage</h2>
+        <p class="card-sub">Accounts using each feature · an account may use several</p>
+        <div class="chart" id="chartDonut"></div>
+        <p id="donutEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
+      </div>
+
+      <div class="card">
+        <h2>Adoption × Activation</h2>
+        <p class="card-sub">Guides mark the 50% line · one point per feature</p>
+        <div class="chart" id="chartScatter"></div>
+        <p id="scatterEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
+      </div>
+
+      <div class="card">
+        <h2>Penetration by feature</h2>
+        <p class="card-sub">Active users as a share of licensed users · latest month</p>
+        <div class="chart" id="chartPen"></div>
+        <p id="penEmpty" hidden style="color:var(--muted);font-size:12px;margin:6px">No features selected.</p>
+      </div>
+
+      <div class="card span-2" id="segPanel" hidden>
+        <h2>Accounts using, by segment</h2>
+        <p class="card-sub">Stacked by product segment, where ZDP provides the breakdown</p>
+        <div class="chart" id="chartSeg"></div>
+      </div>
+
+      <div class="card table-card span-2">
+        <h2>Data table</h2>
+        <p class="card-sub">Latest month in the selected range</p>
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Feature</th><th>Adoption</th><th>Δ MoM</th><th>Penetration</th><th>Activation</th>
+              <th>Accounts using</th><th>Accounts total</th><th>Active users</th><th>Activated accts</th><th>As of</th>
+            </tr>
+          </thead>
+          <tbody id="tblBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p class="defs" id="defs"></p>
+    <p class="src" id="sources"></p>
+  </footer>
+
+  <div id="fatal" class="noscript-msg" hidden>
+    The dashboard could not start — it needs <code>assets/app.js</code>, the two <code>data/*.js</code> files and the ECharts CDN to load.
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.6.0/dist/echarts.min.js"></script>
+<script src="data/summary.js"></script>
+<script src="data/features_master.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

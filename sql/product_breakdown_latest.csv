@@ -1,0 +1,25 @@
+status
+Statement executed successfully.
+
+FEATURE,SEGMENT,ACCOUNTS_TOTAL,ACTIVATED_ACCOUNTS,ACCOUNTS_USING
+action_flows,1.Digital,47408,440,440
+action_flows,2.Corporate,29438,1752,1752
+action_flows,3.Enterprise,10542,742,742
+action_flows,,167,0,0
+change_management,1.Digital,7851,153,55
+change_management,2.Corporate,16281,869,338
+change_management,3.Enterprise,6941,360,133
+change_management,,15,0,0
+es_ai_agents,1.Digital,41580,175,118
+es_ai_agents,2.Corporate,28265,1224,854
+es_ai_agents,3.Enterprise,10226,695,330
+es_ai_agents,,163,0,0
+itam,1.Digital,11316,342,64
+itam,2.Corporate,18475,977,282
+itam,3.Enterprise,7337,339,96
+itam,,25,0,0
+service_catalog,1.Digital,11316,188,21
+service_catalog,2.Corporate,18475,352,93
+service_catalog,3.Enterprise,7337,149,44
+service_catalog,,25,1,0
+
