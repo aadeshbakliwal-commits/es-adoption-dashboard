@@ -182,7 +182,7 @@ const sources = [
   { feature: 'service_catalog', table: 'FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT', grain: 'instance account x daily snapshot; month-end snapshot used per month', freshness: '2026-10-18' },
   { feature: 'change_management', table: 'FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT', grain: 'instance account x daily snapshot (Approvals funnel, proxy for Change Management); month-end snapshot used per month', freshness: '2026-10-18' },
   { feature: 'es_ai_agents', table: 'FUNCTIONAL.PRODUCT_ANALYTICS.AI_AGENTS_INSTANCE_DAILY_SNAPSHOT', grain: 'instance account x daily snapshot; month-end snapshot used per month', freshness: '2026-10-18' },
-  { feature: 'action_flows', table: 'PROPAGATED_FUNCTIONAL.PRODUCT_ANALYTICS.FACT_AGGREGATED_ACTION_FLOW_EXECUTIONS_DAILY_SNAPSHOT', grain: 'instance account x day (execution counts); aggregated to month + cumulative-ever; restricted to paid universe at month end', freshness: '2026-10-19' },
+  { feature: 'action_flows', table: 'FUNCTIONAL.PRODUCT_ANALYTICS.PLATFORM_ADOPTION_INSTANCE_DAILY_SNAPSHOT', grain: 'instance account x daily snapshot (ZDP-curated ACTION_FLOW funnel flags); month-end snapshot used per month. Whole Action Flows product -- ZDP has no advanced-vs-basic split', freshness: '2026-10-18' },
   { feature: 'account_universe', table: 'PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT', grain: 'instance account x daily snapshot (paid customers); used for segment breakdown only', freshness: '2026-10-18' },
 ];
 
@@ -194,10 +194,10 @@ const master = {
   generated_at: generatedAt,
   as_of: '2026-10-19',
   definitions: {
-    adoption: 'Distinct paid accounts with meaningful feature usage in the period (ZDP ACTIVATED flag = usage within last 28 days at the month-end snapshot; Action Flows: >=1 completed flow-step execution in the month) divided by paid accounts eligible for the feature.',
-    penetration: 'Depth of usage: accounts actively using the feature in the period divided by accounts that have the feature enabled / first-used it (ZDP PENETRATED flag; Action Flows: any completed execution ever up to month end). User-level "active users / licensed users" is not available in ZDP instance-level snapshots, so this documented fallback is used.',
-    activation: 'Accounts with the feature enabled or first-meaningful-use in the last 6 months (ZDP PENETRATED flag; Action Flows: >=1 completed flow-step execution ever up to month end) divided by paid accounts eligible for the feature.',
-    account_universe: 'Paid customer instances (INSTANCE_IS_PAID_CUSTOMER = TRUE in FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT, matching PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT; ~87.5k instances) further restricted per feature to the feature entitlement flag (ELIGIBLE). This is "accounts entitled to the feature", not "all Zendesk accounts". Note: ITAM / Service Catalog / Approvals eligibility includes CX Suite plans, not only ES Suite plans. Action Flows has no eligibility flag, so its denominator is all paid customers.',
+    adoption: 'Distinct paid accounts with meaningful feature usage in the period (ZDP ACTIVATED flag at the month-end snapshot; platform features: active >=2 of the last 4 weeks) divided by paid accounts eligible for the feature.',
+    penetration: 'Depth of usage: accounts actively using the feature in the period divided by accounts that have the feature enabled / first-used it (ZDP PENETRATED flag). User-level "active users / licensed users" is not available in ZDP instance-level snapshots, so this documented fallback is used.',
+    activation: 'Accounts with the feature enabled or first-meaningful-use in the last 6 months (ZDP PENETRATED flag) divided by paid accounts eligible for the feature.',
+    account_universe: 'Paid customer instances (INSTANCE_IS_PAID_CUSTOMER = TRUE, matching PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT; ~87.5k instances) further restricted per feature to the feature entitlement flag (ELIGIBLE). This is "accounts entitled to the feature", not "all Zendesk accounts". Note: ITAM / Service Catalog / Approvals eligibility includes CX Suite plans, not only ES Suite plans; Action Flows / Connectors / MCP eligibility = "all accounts with a core base plan" (80,234 paid+eligible on 2026-10-18).',
   },
   sources,
   monthly,

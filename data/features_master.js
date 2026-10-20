@@ -1,11 +1,11 @@
 window.ES_MASTER = {
-  "generated_at": "2026-10-20T06:08:03Z",
+  "generated_at": "2026-10-20T06:40:27Z",
   "as_of": "2026-10-19",
   "definitions": {
-    "adoption": "Distinct paid accounts with meaningful feature usage in the period (ZDP ACTIVATED flag = usage within last 28 days at the month-end snapshot; Action Flows: >=1 completed flow-step execution in the month) divided by paid accounts eligible for the feature.",
-    "penetration": "Depth of usage: accounts actively using the feature in the period divided by accounts that have the feature enabled / first-used it (ZDP PENETRATED flag; Action Flows: any completed execution ever up to month end). User-level \"active users / licensed users\" is not available in ZDP instance-level snapshots, so this documented fallback is used.",
-    "activation": "Accounts with the feature enabled or first-meaningful-use in the last 6 months (ZDP PENETRATED flag; Action Flows: >=1 completed flow-step execution ever up to month end) divided by paid accounts eligible for the feature.",
-    "account_universe": "Paid customer instances (INSTANCE_IS_PAID_CUSTOMER = TRUE in FUNCTIONAL.PRODUCT_ANALYTICS.ES_ADOPTION_INSTANCE_DAILY_SNAPSHOT, matching PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT; ~87.5k instances) further restricted per feature to the feature entitlement flag (ELIGIBLE). This is \"accounts entitled to the feature\", not \"all Zendesk accounts\". Note: ITAM / Service Catalog / Approvals eligibility includes CX Suite plans, not only ES Suite plans. Action Flows has no eligibility flag, so its denominator is all paid customers."
+    "adoption": "Distinct paid accounts with meaningful feature usage in the period (ZDP ACTIVATED flag at the month-end snapshot; platform features: active >=2 of the last 4 weeks) divided by paid accounts eligible for the feature.",
+    "penetration": "Depth of usage: accounts actively using the feature in the period divided by accounts that have the feature enabled / first-used it (ZDP PENETRATED flag). User-level \"active users / licensed users\" is not available in ZDP instance-level snapshots, so this documented fallback is used.",
+    "activation": "Accounts with the feature enabled or first-meaningful-use in the last 6 months (ZDP PENETRATED flag) divided by paid accounts eligible for the feature.",
+    "account_universe": "Paid customer instances (INSTANCE_IS_PAID_CUSTOMER = TRUE, matching PRESENTATION.PRODUCT_ANALYTICS.PAID_CUSTOMER_UNIVERSE_DAILY_SNAPSHOT; ~87.5k instances) further restricted per feature to the feature entitlement flag (ELIGIBLE). This is \"accounts entitled to the feature\", not \"all Zendesk accounts\". Note: ITAM / Service Catalog / Approvals eligibility includes CX Suite plans, not only ES Suite plans; Action Flows / Connectors / MCP eligibility = \"all accounts with a core base plan\" (80,234 paid+eligible on 2026-10-18)."
   },
   "sources": [
     {
@@ -34,9 +34,9 @@ window.ES_MASTER = {
     },
     {
       "feature": "action_flows",
-      "table": "PROPAGATED_FUNCTIONAL.PRODUCT_ANALYTICS.FACT_AGGREGATED_ACTION_FLOW_EXECUTIONS_DAILY_SNAPSHOT",
-      "grain": "instance account x day (execution counts); aggregated to month + cumulative-ever; restricted to paid universe at month end",
-      "freshness": "2026-10-19"
+      "table": "FUNCTIONAL.PRODUCT_ANALYTICS.PLATFORM_ADOPTION_INSTANCE_DAILY_SNAPSHOT",
+      "grain": "instance account x daily snapshot (ZDP-curated ACTION_FLOW funnel flags); month-end snapshot used per month. Whole Action Flows product -- ZDP has no advanced-vs-basic split",
+      "freshness": "2026-10-18"
     },
     {
       "feature": "account_universe",
@@ -721,170 +721,170 @@ window.ES_MASTER = {
     {
       "feature": "action_flows",
       "month": "2025-09",
-      "accounts_using": 27,
-      "accounts_total": 98335,
-      "adoption_pct": 0.03,
+      "accounts_using": 13,
+      "accounts_total": 88752,
+      "adoption_pct": 0.01,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 100,
-      "activated_accounts": 27,
+      "penetration_pct": 43.33,
+      "activated_accounts": 30,
       "activation_pct": 0.03
     },
     {
       "feature": "action_flows",
       "month": "2025-10",
-      "accounts_using": 41,
-      "accounts_total": 97710,
-      "adoption_pct": 0.04,
+      "accounts_using": 19,
+      "accounts_total": 88347,
+      "adoption_pct": 0.02,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 83.67,
-      "activated_accounts": 49,
-      "activation_pct": 0.05
-    },
-    {
-      "feature": "action_flows",
-      "month": "2025-11",
-      "accounts_using": 39,
-      "accounts_total": 97385,
-      "adoption_pct": 0.04,
-      "active_users": null,
-      "licensed_users": null,
-      "penetration_pct": 63.93,
-      "activated_accounts": 61,
+      "penetration_pct": 38,
+      "activated_accounts": 50,
       "activation_pct": 0.06
     },
     {
       "feature": "action_flows",
-      "month": "2025-12",
-      "accounts_using": 40,
-      "accounts_total": 96686,
-      "adoption_pct": 0.04,
+      "month": "2025-11",
+      "accounts_using": 28,
+      "accounts_total": 88057,
+      "adoption_pct": 0.03,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 59.7,
-      "activated_accounts": 67,
+      "penetration_pct": 45.16,
+      "activated_accounts": 62,
       "activation_pct": 0.07
+    },
+    {
+      "feature": "action_flows",
+      "month": "2025-12",
+      "accounts_using": 24,
+      "accounts_total": 87556,
+      "adoption_pct": 0.03,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 35.29,
+      "activated_accounts": 68,
+      "activation_pct": 0.08
     },
     {
       "feature": "action_flows",
       "month": "2026-01",
-      "accounts_using": 35,
-      "accounts_total": 96158,
-      "adoption_pct": 0.04,
+      "accounts_using": 24,
+      "accounts_total": 87216,
+      "adoption_pct": 0.03,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 48.61,
-      "activated_accounts": 72,
-      "activation_pct": 0.07
+      "penetration_pct": 32.88,
+      "activated_accounts": 73,
+      "activation_pct": 0.08
     },
     {
       "feature": "action_flows",
       "month": "2026-02",
-      "accounts_using": 58,
-      "accounts_total": 95555,
-      "adoption_pct": 0.06,
+      "accounts_using": 41,
+      "accounts_total": 86804,
+      "adoption_pct": 0.05,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 63.74,
-      "activated_accounts": 91,
-      "activation_pct": 0.1
-    },
-    {
-      "feature": "action_flows",
-      "month": "2026-03",
-      "accounts_using": 71,
-      "accounts_total": 94670,
-      "adoption_pct": 0.07,
-      "active_users": null,
-      "licensed_users": null,
-      "penetration_pct": 65.74,
-      "activated_accounts": 108,
+      "penetration_pct": 44.57,
+      "activated_accounts": 92,
       "activation_pct": 0.11
     },
     {
       "feature": "action_flows",
-      "month": "2026-04",
-      "accounts_using": 65,
-      "accounts_total": 93844,
-      "adoption_pct": 0.07,
+      "month": "2026-03",
+      "accounts_using": 52,
+      "accounts_total": 86122,
+      "adoption_pct": 0.06,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 56.03,
-      "activated_accounts": 116,
+      "penetration_pct": 50,
+      "activated_accounts": 104,
       "activation_pct": 0.12
     },
     {
       "feature": "action_flows",
-      "month": "2026-05",
-      "accounts_using": 914,
-      "accounts_total": 93024,
-      "adoption_pct": 0.98,
+      "month": "2026-04",
+      "accounts_using": 50,
+      "accounts_total": 85491,
+      "adoption_pct": 0.06,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 95.61,
-      "activated_accounts": 956,
-      "activation_pct": 1.03
+      "penetration_pct": 46.3,
+      "activated_accounts": 108,
+      "activation_pct": 0.13
+    },
+    {
+      "feature": "action_flows",
+      "month": "2026-05",
+      "accounts_using": 736,
+      "accounts_total": 84840,
+      "adoption_pct": 0.87,
+      "active_users": null,
+      "licensed_users": null,
+      "penetration_pct": 77.64,
+      "activated_accounts": 948,
+      "activation_pct": 1.12
     },
     {
       "feature": "action_flows",
       "month": "2026-06",
-      "accounts_using": 1211,
-      "accounts_total": 91926,
-      "adoption_pct": 1.32,
+      "accounts_using": 971,
+      "accounts_total": 83920,
+      "adoption_pct": 1.16,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 91.19,
-      "activated_accounts": 1328,
-      "activation_pct": 1.44
+      "penetration_pct": 73.78,
+      "activated_accounts": 1316,
+      "activation_pct": 1.57
     },
     {
       "feature": "action_flows",
       "month": "2026-07",
-      "accounts_using": 1386,
-      "accounts_total": 91117,
-      "adoption_pct": 1.52,
+      "accounts_using": 1149,
+      "accounts_total": 83316,
+      "adoption_pct": 1.38,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 81.87,
-      "activated_accounts": 1693,
-      "activation_pct": 1.86
+      "penetration_pct": 68.39,
+      "activated_accounts": 1680,
+      "activation_pct": 2.02
     },
     {
       "feature": "action_flows",
       "month": "2026-08",
-      "accounts_using": 1671,
-      "accounts_total": 89156,
-      "adoption_pct": 1.87,
+      "accounts_using": 1368,
+      "accounts_total": 81550,
+      "adoption_pct": 1.68,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 79.57,
-      "activated_accounts": 2100,
-      "activation_pct": 2.36
+      "penetration_pct": 65.71,
+      "activated_accounts": 2082,
+      "activation_pct": 2.55
     },
     {
       "feature": "action_flows",
       "month": "2026-09",
-      "accounts_using": 2089,
-      "accounts_total": 88162,
-      "adoption_pct": 2.37,
+      "accounts_using": 1754,
+      "accounts_total": 80718,
+      "adoption_pct": 2.17,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 79.37,
-      "activated_accounts": 2632,
-      "activation_pct": 2.99
+      "penetration_pct": 67.28,
+      "activated_accounts": 2607,
+      "activation_pct": 3.23
     },
     {
       "feature": "action_flows",
       "month": "2026-10",
-      "accounts_using": 2157,
-      "accounts_total": 87555,
-      "adoption_pct": 2.46,
+      "accounts_using": 1953,
+      "accounts_total": 80234,
+      "adoption_pct": 2.43,
       "active_users": null,
       "licensed_users": null,
-      "penetration_pct": 73.52,
-      "activated_accounts": 2934,
-      "activation_pct": 3.35
+      "penetration_pct": 67.6,
+      "activated_accounts": 2889,
+      "activation_pct": 3.6
     }
   ],
   "product_breakdown": [
@@ -1010,21 +1010,21 @@ window.ES_MASTER = {
     }
   ],
   "funnel": {
-    "as_of": "2026-10-19",
+    "as_of": "2026-10-18",
     "rows": [
       {
         "feature": "action_flow_connectors",
-        "eligible": 87555,
-        "penetrated": 1789,
-        "activated": 1353,
-        "adopted": 1323
+        "eligible": 80234,
+        "penetrated": 860,
+        "activated": 420,
+        "adopted": 249
       },
       {
         "feature": "action_flows",
-        "eligible": 87555,
-        "penetrated": 2934,
-        "activated": 2306,
-        "adopted": 2269
+        "eligible": 80234,
+        "penetrated": 2889,
+        "activated": 1953,
+        "adopted": 1225
       },
       {
         "feature": "change_management",
@@ -1049,10 +1049,10 @@ window.ES_MASTER = {
       },
       {
         "feature": "mcp_actions",
-        "eligible": 87555,
-        "penetrated": 43,
-        "activated": 21,
-        "adopted": 20
+        "eligible": 80234,
+        "penetrated": 41,
+        "activated": 16,
+        "adopted": 11
       },
       {
         "feature": "service_catalog",
@@ -1071,17 +1071,17 @@ window.ES_MASTER = {
     ]
   },
   "arr": {
-    "as_of": "2026-10-19",
+    "as_of": "2026-10-18",
     "rows": [
       {
         "feature": "action_flow_connectors",
-        "activated_arr_usd": 293214790,
-        "adopted_arr_usd": 291081331
+        "activated_arr_usd": 66343683,
+        "adopted_arr_usd": 39389942
       },
       {
         "feature": "action_flows",
-        "activated_arr_usd": 442644778,
-        "adopted_arr_usd": 439838450
+        "activated_arr_usd": 401231675,
+        "adopted_arr_usd": 316544947
       },
       {
         "feature": "change_management",
@@ -1100,8 +1100,8 @@ window.ES_MASTER = {
       },
       {
         "feature": "mcp_actions",
-        "activated_arr_usd": 1584606,
-        "adopted_arr_usd": 1556214
+        "activated_arr_usd": 997692,
+        "adopted_arr_usd": 275822
       },
       {
         "feature": "service_catalog",

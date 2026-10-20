@@ -1,5 +1,5 @@
 window.ES_SUMMARY = {
-  "generated_at": "2026-10-20T06:08:03Z",
+  "generated_at": "2026-10-20T06:40:27Z",
   "as_of": "2026-10-19",
   "current_month": "2026-10",
   "features": [
@@ -54,13 +54,13 @@ window.ES_SUMMARY = {
     {
       "feature": "action_flows",
       "display_name": "Advanced Action Flows",
-      "accounts_using": 2157,
-      "accounts_total": 87555,
-      "adoption_pct": 2.46,
-      "penetration_pct": 73.52,
-      "activation_pct": 3.35,
+      "accounts_using": 1953,
+      "accounts_total": 80234,
+      "adoption_pct": 2.43,
+      "penetration_pct": 67.6,
+      "activation_pct": 3.6,
       "active_users": null,
-      "mom_delta_adoption_pp": 0.09,
+      "mom_delta_adoption_pp": 0.26,
       "data_as_of": "2026-10-19"
     }
   ],

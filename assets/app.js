@@ -20,7 +20,8 @@
   // proxy exists in ZDP (kept in the JSON/SQL, intentionally not shown).
   const GAP_FEATURES = [
     { key: "saas_management", name: "SaaS Management", note: "Not instrumented in ZDP yet" },
-    { key: "change_management", name: "Change Management", note: "Not instrumented in ZDP yet" }
+    { key: "change_management", name: "Change Management", note: "Not instrumented in ZDP yet" },
+    { key: "advanced_action_flows", name: "Advanced Action Flows", note: "Not separately instrumented in ZDP yet" }
   ];
 
   // Features measured in ZDP but intentionally out of scope for this dashboard
@@ -623,8 +624,8 @@
     const gapsEl = document.getElementById("gaps");
     gapsEl.hidden = false;
     gapsEl.innerHTML = `<strong>Scope &amp; known gaps</strong> — SaaS Management and Change Management are not instrumented in ZDP (Change Management has only an Approvals-funnel proxy; its data is kept in the repo's JSON but not shown) · ` +
+      `Advanced Action Flows has no separate instrumentation: ZDP only measures a blended Action Flows series (basic + advanced combined), which is therefore not shown · ` +
       `Tasks, MCP Actions, Action Flow Connectors and base Action Flows are measured in ZDP but out of scope for this dashboard · ` +
-      `Advanced Action Flows is shown separately from base Action Flows · ` +
       `ES AI Agents covers the AI Agents product across CX and EX.`;
     const src = document.getElementById("sources");
     src.innerHTML = "Sources: " + (MASTER.sources || []).map((s) => `${esc(FEATURES[s.feature] ? FEATURES[s.feature].name : s.feature)} <code>${esc(s.table)}</code> (fresh as of ${esc(s.freshness)})`).join(" · ") +
