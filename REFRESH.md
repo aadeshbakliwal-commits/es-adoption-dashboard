@@ -3,6 +3,18 @@
 Generated: 2026-10-20 · Data as of: 2026-10-19 · Connection: `zdp-global` (Snowflake profile)
 Warehouse: PUBLIC_ZENDESK_L (per connection config). All queries aggregate in SQL; no raw row pulls.
 
+## Dashboard presentation note (2026-10-20)
+
+Scope set by the dashboard owner:
+
+- **SaaS Management** — no ZDP dataset; shown on the site as a "Not instrumented in ZDP yet" gap card.
+- **Change Management** — only an Approvals-funnel proxy exists; shown as a "Not instrumented in ZDP yet" gap card.
+  Its proxy data stays in `data/features_master.json` + `sql/es_funnel_monthly.sql` but is not displayed.
+- **Action Flows, Tasks, MCP Actions, Action Flow Connectors** — measured in ZDP (funnel + ARR blocks) but
+  intentionally **out of scope**: excluded from every dashboard view. Data remains in the JSON blocks.
+
+To re-include any of these, remove its key from `GAP_FEATURES` / `HIDDEN_FEATURES` in `assets/app.js`.
+
 ## How to re-run
 
 All queries are parameterized with `SET start_month` / `SET end_date` at the top of each file —

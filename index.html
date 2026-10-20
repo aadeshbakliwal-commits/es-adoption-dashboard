@@ -22,7 +22,14 @@
       <div class="head-meta">
         <div class="stamp" id="stamp">DATA AS OF —</div>
         <span class="tag pill">Zendesk internal</span><br>
+        <button class="theme-btn" id="refreshBtn" type="button">↻ Refresh data</button>
         <button class="theme-btn" id="themeBtn" type="button">Dark mode</button>
+        <div class="refresh-pop" id="refreshPop" hidden>
+          <div class="rp-stale" id="rpStale"></div>
+          <p>This page serves a static snapshot. To pull the latest from ZDP and publish it here, run on your Mac:</p>
+          <div class="rp-cmd"><code>bin/refresh.sh --push</code><button id="copyCmd" type="button">Copy</button></div>
+          <p class="rp-note">Snowflake SSO opens in your browser · ~1 min · then reload this page.</p>
+        </div>
       </div>
     </div>
     <div class="placeholder-strip" id="placeholderStrip" hidden>

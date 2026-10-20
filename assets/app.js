@@ -22,11 +22,16 @@
     { key: "change_management", name: "Change Management", note: "Not instrumented in ZDP yet" }
   ];
 
+  // Features measured in ZDP but intentionally out of scope for this dashboard
+  // (user decision 2026-10-20): excluded from every view, no gap card.
+  const HIDDEN_FEATURES = ["action_flows", "tasks", "mcp_actions", "action_flow_connectors"];
+  const isExcluded = (k) => GAP_FEATURES.some((g) => g.key === k) || HIDDEN_FEATURES.includes(k);
+
   const state = {
     preset: "12m",           // 3m | 6m | 12m | all | custom
     from: null, to: null,    // "YYYY-MM" for custom
     tab: "overview",
-    active: new Set(Object.keys(FEATURES).filter((k) => !GAP_FEATURES.some((g) => g.key === k))),
+    active: new Set(Object.keys(FEATURES).filter((k) => !isExcluded(k))),
     charts: []
   };
 
@@ -121,7 +126,7 @@
   }
   function activeFeatures() {
     const ranked = SUMMARY.features_ranked || Object.keys(FEATURES);
-    return ranked.filter((k) => state.active.has(k));
+    return ranked.filter((k) => state.active.has(k) && !isExcluded(k));
   }
   function latestRow(feature) {
     const s = series(feature);
@@ -431,7 +436,8 @@
     const f = MASTER.funnel;
     if (!f || !f.rows || !f.rows.length) { panel.hidden = true; return; }
     panel.hidden = false;
-    const rows = f.rows;
+    const rows = f.rows.filter((r) => !isExcluded(r.feature));
+    if (!rows.length) { panel.hidden = true; return; }
     document.getElementById("funnelSub").textContent =
       "Eligible → penetrated → activated → adopted · snapshot " + fmtDate(f.as_of) + " · log scale";
     const names = rows.map((r) => FUNNEL_NAMES[r.feature] || r.feature);
@@ -507,7 +513,8 @@
     if (!a || !a.rows || !a.rows.length) { panel.hidden = true; return; }
     panel.hidden = false;
     document.getElementById("arrSub").textContent = "Activated vs adopted accounts · snapshot " + fmtDate(a.as_of) + " · net ARR (USD)";
-    const rows = a.rows;
+    const rows = a.rows.filter((r) => !isExcluded(r.feature));
+    if (!rows.length) { panel.hidden = true; return; }
     const names = rows.map((r) => FUNNEL_NAMES[r.feature] || r.feature);
     const colors = isDark() ? ["#3987e5", "#86b6ef"] : ["#1c5cab", "#0d366b"];
     const el = document.getElementById("chartARR");
@@ -560,6 +567,7 @@
         axisLabel: { color: cssVar("--text"), fontSize: 11, fontFamily: cssVar("--font") }
       },
       tooltip: tooltipOpts({
+        trigger: "axis",
         formatter: (ps) => ps.filter((p) => p.value).map((p) => `<b>${fmtInt(p.value)}</b> <span style="color:${cssVar("--muted")}">${esc(p.seriesName)}</span>`).join("<br>")
       }),
       legend: { top: 0, right: 0, itemWidth: 10, itemHeight: 10, textStyle: { color: cssVar("--text-2"), fontSize: 11, fontFamily: cssVar("--font") } },
@@ -611,7 +619,8 @@
        <strong>Adopted</strong> — the feature has sustained, recurring usage.`;
     const gapsEl = document.getElementById("gaps");
     gapsEl.hidden = false;
-    gapsEl.innerHTML = `<strong>Known gaps</strong> — SaaS Management and Change Management are not instrumented in ZDP (Change Management has only an Approvals-funnel proxy; its data is kept in the repo's JSON but not shown) · ` +
+    gapsEl.innerHTML = `<strong>Scope &amp; known gaps</strong> — SaaS Management and Change Management are not instrumented in ZDP (Change Management has only an Approvals-funnel proxy; its data is kept in the repo's JSON but not shown) · ` +
+      `Action Flows, Tasks, MCP Actions and Action Flow Connectors are measured in ZDP but out of scope for this dashboard · ` +
       `ES AI Agents covers the AI Agents product across CX and EX.`;
     const src = document.getElementById("sources");
     src.innerHTML = "Sources: " + (MASTER.sources || []).map((s) => `${esc(FEATURES[s.feature] ? FEATURES[s.feature].name : s.feature)} <code>${esc(s.table)}</code> (fresh as of ${esc(s.freshness)})`).join(" · ") +
@@ -650,7 +659,7 @@
     // feature checkboxes (gap features have no data cards, so no filter rows)
     const list = document.getElementById("featureList");
     list.innerHTML = "";
-    (SUMMARY.features_ranked || Object.keys(FEATURES)).filter((k) => !GAP_FEATURES.some((g) => g.key === k)).forEach((f) => {
+    (SUMMARY.features_ranked || Object.keys(FEATURES)).filter((k) => !isExcluded(k)).forEach((f) => {
       const r = latestRow(f) || {};
       const row = document.createElement("div");
       row.className = "check-row" + (state.active.has(f) ? " selected" : "");
@@ -666,7 +675,7 @@
     allRow.className = "preset-row";
     allRow.innerHTML = '<span style="font-weight:600">Reset — all products</span><span></span>';
     allRow.addEventListener("click", () => {
-      state.active = new Set(Object.keys(FEATURES).filter((k) => !GAP_FEATURES.some((g) => g.key === k)));
+      state.active = new Set(Object.keys(FEATURES).filter((k) => !isExcluded(k)));
       renderAll();
     });
     list.appendChild(allRow);
@@ -679,7 +688,7 @@
   }
   function syncFaces() {
     const n = state.active.size;
-    const dataTotal = Object.keys(FEATURES).length - GAP_FEATURES.length;
+    const dataTotal = Object.keys(FEATURES).length - GAP_FEATURES.length - HIDDEN_FEATURES.length;
     document.getElementById("featureFaceLabel").textContent = n === dataTotal ? "All products" : `${n} selected`;
     document.getElementById("rangeFaceLabel").textContent =
       ({ "3m": "Last 3 months", "6m": "Last 6 months", "12m": "Last 12 months", "all": "All data" }[state.preset]) ||
@@ -710,6 +719,27 @@
       renderAll();
     });
     window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { paint(); renderAll(); });
+  }
+
+  function bindRefresh() {
+    const btn = document.getElementById("refreshBtn");
+    const pop = document.getElementById("refreshPop");
+    document.getElementById("rpStale").textContent =
+      `Data as of ${fmtDate(MASTER.as_of)} · refreshed ${fmtDate((MASTER.generated_at || "").slice(0, 10))}`;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      pop.hidden = !pop.hidden;
+    });
+    document.getElementById("copyCmd").addEventListener("click", (e) => {
+      e.stopPropagation();
+      const done = () => { e.target.textContent = "Copied"; setTimeout(() => { e.target.textContent = "Copy"; }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText("bin/refresh.sh --push").then(done, done);
+      } else { done(); }
+    });
+    document.addEventListener("click", (e) => {
+      if (!pop.hidden && !pop.contains(e.target) && e.target !== btn) pop.hidden = true;
+    });
   }
 
   /* ---------- boot ---------- */
@@ -746,6 +776,7 @@
     bindTheme();
     bindFilters();
     bindTabs();
+    bindRefresh();
     renderMeta();
     const initial = new URLSearchParams(location.search).get("tab");
     switchTab(TAB_RENDER[initial] ? initial : "overview");

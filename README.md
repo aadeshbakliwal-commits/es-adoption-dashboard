@@ -20,7 +20,8 @@ REFRESH.md            how to refresh, metric definitions, caveats
 ## Refreshing the data
 
 ```sh
-bin/refresh.sh        # runs sql/*.sql via Snowflake CLI, rewrites data/*.json + *.js
+bin/refresh.sh         # runs sql/*.sql via Snowflake CLI, rewrites data/*.json + *.js
+bin/refresh.sh --push  # same, then commits + pushes so GitHub Pages updates
 ```
 
 Requires the Snowflake CLI connections from the zdp-explore setup (`zdp-amer` /

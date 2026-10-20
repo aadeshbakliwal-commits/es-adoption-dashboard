@@ -25,4 +25,17 @@ node build_json.mjs
 echo "5/5 wrapping JSON as data/*.js…"
 bin/wrap-data.sh
 
+# --push: publish the refreshed data straight to the GitHub Pages site.
+if [ "$1" = "--push" ]; then
+  git add -A
+  if git commit -q -m "Data refresh $(date +%F)
+
+Co-Authored-By: Claude Code <noreply@anthropic.com>"; then
+    git push -q
+    echo "Published to GitHub Pages."
+  else
+    echo "No data changes since the last refresh — nothing to publish."
+  fi
+fi
+
 echo "Done — data/*.js regenerated. Reload index.html."
